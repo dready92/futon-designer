@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!--
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+
+Designer is waiting an url like :
+
+designer.html?dbname/_design/ddoc/[entity]/[entityname]
+
+where entity is one of view , list, or show
+and entityname is the name of the view|list|show
+
+If entity is view we can have :
+designer.html?dbname/_design/ddoc/view/[entityname]/map
+designer.html?dbname/_design/ddoc/view/[entityname]/reduce
+
+
+-->
+<html lang="en">
+  <head>
+    <title>Couch Designer</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <link rel="stylesheet" href="style/layout.css?0.11.0" type="text/css">
+	<link rel="stylesheet" href="designer/BespinEmbedded.css?0.7.1" type="text/css">
+    <script src="script/json2.js"></script>
+    <script src="script/sha1.js"></script>
+    <script src="script/jquery.js?1.4.2"></script>
+    <script src="script/jquery.couch.js?0.11.0"></script>
+    <script src="script/jquery.form.js?2.36"></script>
+    <script src="designer/jquery.dialog.js?0.11.0"></script>
+	<script src="designer/jquery.james.js?0.11.0"></script>
+    <script src="designer/jquery.menuPanel.js?0.11.0"></script>
+    <script src="designer/jquery.checkJSON.js?0.11.0"></script>
+    <script src="designer/BespinEmbedded.js?0.7.1"></script>
+    <script src="script/futon.js?0.11.0"></script>
+    <script src="script/futon.format.js?0.11.0"></script>
+<!--    <script src="script/jquery.resizer.js?0.11.0"></script>-->
+	<script src="designer/futon.designer.js?0.11.0"></script>
+
+    
+
+	
+	<style>
+		#view, #home, #list, #show, #designer { display: none; }
+		#home div.home { margin: 10px 20px;}
+		#home div.ddoc { border-bottom: 1px solid #efefef; padding-bottom: 5px; margin-bottom: 5px;}
+		#home div.ddoc > strong { font-size: 1.2em;}
+		#home div.entity { padding-left: 20px; padding-bottom: 5px; padding-top: 10px; font-style: italic;}
+		#home div.entity span.link { font-style: normal; padding-left: 30px;  font-size: 0.9em;}
+/*		#home div.entity > div:last-child { padding-left: (20px; font-style: normal;}*/
+
+		#list, #show {padding: 2px 5px; background-color: #E9E9E9; border: 1px solid #A7A7A7; border-bottom: none;}
+
+		#viewoptions tr td{font-size: 0.9em; padding-top: 2px; padding-bottom: 2px;}
+		#viewoptions tr td:first-child {padding-right: 5px; padding-left: 5px; font-weight: bold;}
+		#viewoptions tr td:last-child {padding-right: 5px; padding-left: 5px; color: #AAA;}
+		#viewoptions tr:hover { background-color: #ddd; }
+		#viewoptions tbody tr:nth-child(odd) td{ background-color: #FFFFFF;}
+		#viewoptions { display:none; }
+		#designer input.error { background-color: rgba(255,0,0,0.1);}
+		#designer div.viewSettingsHeader {padding: 2px 5px; background-color: #E9E9E9; border: 1px solid #A7A7A7;}
+		#designer div.viewSettingsHeader .link.close { display: none; }
+		.link { cursor: pointer; color: #333;}
+		div.editorWrapper {width: 600px; overflow: auto; padding: 0px; margin:10px auto;-webkit-box-shadow:0px 0px 7px #333;-moz-box-shadow:0px 0px 7px #333;}
+		div.editorWrapper.noview { height: 317px; }
+		div.editorWrapper.view {height: 335px;}
+		div.editor { width: 600px; height: 300px; background-color: #4C4A41; margin: 0 auto; padding: 0;}
+		div.editorStatusBar {	width: 592px; height: 16px; margin: 0 auto; padding: 0 3px;color: #EEE;background-color: #4C4A41; 
+								border-left:1px solid #4C4A41;border-right:1px solid #000;border-bottom:1px solid #4C4A41;}
+		div.editorStatusBar > span { cursor: pointer; font-weight: bold; color: #000; background-color: rgba(255,255,255,0.3); padding: 1px 3px; border-radius: 7px;
+		}
+		div.editorStatusBar > span:hover {background-color: rgba(255,255,255,0.5);}
+
+		div.editorSwitcherBar {	width: 592px; height: 16px; margin: 0px auto; padding: 0 3px;color: #EEE;background-color: #666; 
+								border:1px solid #4C4A41; display: none;}
+
+		div.queryPanel { background-color: #FEFFEA; display: none; border: 1px solid #A7A7A7; margin-top: 10px; padding: 0;}
+		div.queryPanel > div.querying { display: none; width: 300px; margin: auto;  padding: 0 3px;}
+		div.queryPanel > div.results { display: none; font-size: 0.85em;}
+		div.queryPanel > div.results > p { margin: 0 0 3px 0; background-color: #333; color: #E9E9E9; font-weight: bold; padding: 3px 3px 3px 10px;}
+		div.queryPanel > div.results  pre {padding: 0 3px;}
+		div.queryPanel > div.error { display: none; margin: 10px; text-align:center; padding: 0 3px;}
+
+		div.menuPanel { border: 1px solid #A7A7A7; padding: 1px; background-color: #E9E9E9; max-height: 200px; overflow:auto;
+						-webkit-box-shadow:0px 0px 5px #A7A7A7;-moz-box-shadow:0px 0px 5px #A7A7A7;}
+		div.menuPanel ul { list-style-type: none; padding: 0; margin: 0; }
+		div.menuPanel ul > li { background-color: #e5e5e5; margin: 1px; padding: 2px 5px; cursor: pointer; font-weight: normal;}
+		div.menuPanel ul > li:hover {background-color: #d5d5d5;}
+		.left { text-align:left;}
+.ul_james {
+	margin: 1px; padding: 1px; list-style-position: outside; list-style: none;
+	border: 1px solid #A7A7A7; padding: 1px; background-color: #E9E9E9; overflow:auto;
+	-webkit-box-shadow:0px 0px 5px #A7A7A7;-moz-box-shadow:0px 0px 5px #A7A7A7;
+}
+
+.li_james {
+	background-color: #e5e5e5; margin: 1px; padding: 2px 5px; cursor: pointer; font-weight: normal;
+}
+
+.li_james_hovered { background-color: #d5d5d5; }
+	</style>
+    <script>
+var page = new $.futon.CouchDesignerHomePage();
+
+$.futon.navigation.ready(function() {
+	this.addDatabase(page.db.name);
+	this.updateSelection(
+		location.pathname.replace(/designer\.html/, "database.html"),
+		"?" + page.db.name
+	);
+});
+
+$(document).ready(function() {
+
+    function escape(string) {
+        return string	.replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+    }
+
+	$("h1 a.dbname").text(page.dbName).attr("href", "database.html?" + encodeURIComponent(page.db.name));
+	$("h1 a.designer").attr('href','designer.html?'+encodeURIComponent(page.db.name));
+	if ( page.entityname ) {
+		$("h1 strong").html('<i>'+page.entitylist[page.entity]+'</i> '+escape(decodeURIComponent(page.entityname))+' <i>on</i> '+  escape(decodeURIComponent(page.docId.substr(8))));
+	} else {
+		$("h1 strong").text("Welcome");
+	}
+	page.bootstrap();
+
+});
+	</script>
+  </head>
+
+  <body><div id="wrap">
+    <h1>
+    <a href="index.html">Overview</a>
+    <a class="dbname" href="#">?</a>
+	<a class="designer">Designer</a>
+      <strong>Designer</strong>
+	
+      <a class="raw" title="Raw document"></a>
+    </h1>
+    <div id="content">
+		<div id="wait"><center><img src="image/spinner.gif"></center></div>
+		<div id="home">
+			<h2>Please choose the list, view or show to edit :</h2>
+			<div class="home"></div>
+		</div>
+		
+		<div id="designer">
+			<div class="editorWrapper noview">
+				<div class="editorSwitcherBar"></div>
+				<div class="editor"></div>
+				<div class="editorStatusBar">idle</div>	
+			</div>
+			
+	<!-- 			<h2>Working on <span class="ddoc_id"></span>, view <span class="view_name"></span></h2> -->
+
+			<table id="viewoptions" border="0" cellspacing="0" cellpadding="0" class="listing">
+			<thead>
+				<tr>
+					<th>Option</th>
+					<th>Value</th>
+					<th>Informations</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>limit</td><td><input type="text" name="limit" placeholder="Integer" size="6" value="10"></td><td>Limit the number of results</td>
+				</tr>
+				<tr>
+					<td>skip</td><td><input type="text" name="skip" placeholder="Integer" size="6"></td><td>Add an offset to the view rows</td>
+				</tr>
+				<tr>
+					<td>include_docs</td><td><input type="checkbox" name="include_docs" value="1"></td><td>Include documents in view rows</td>
+				</tr>
+				<tr>
+					<td>reduce=false</td><td><input type="checkbox" name="reduce" value="1"></td><td>Do not use the reduce function of the view</td>
+				</tr>
+				<tr>
+					<td>inclusive_end=false</td><td><input type="checkbox" name="inclusive_end" value="1"></td><td>Do not include <i>endkey</i> results in view rows</td>
+				</tr>
+				<tr>
+					<td>stale=ok</td><td><input type="checkbox" name="stale" value="1"></td><td>Accept view from cache, even if the cache is not up to date</td>
+				</tr>
+				<tr>
+					<td>group</td><td><input type="checkbox" name="group" value="1"></td><td>Tell the reduce function to group reducing by keys</td>
+				</tr>
+				<tr>
+					<td>group_level</td><td><input type="text" name="group_level" placeholder="Integer" size="6"></td><td>When using a reduce function with <i>group=true</i>, scope the reduce functions to the nth level of the emited keys</td>
+				</tr>
+				<tr>
+					<td>key</td><td><input type="text" name="key" placeholder="Enter valid JSON here" size="30"></td><td>The view key to select</td>
+				</tr>
+				<tr>
+					<td>keys</td><td><input type="text" name="keys" placeholder="Enter valid JSON here" size="30"></td><td>The view keys to select (should be a JSON array)</td>
+				</tr>
+				<tr>
+					<td>startkey</td><td><input type="text" name="startkey" placeholder="Enter valid JSON here" size="30"></td><td>In view response, only select view keys beggining at <i>startkey</i></td>
+				</tr>
+				<tr>
+					<td>startkey_docid</td><td><input type="text" name="startkey_docid" placeholder="Enter valid doc id here" size="30"></td><td>In view response, start adding view rows on <i>startkey</i> emited by <i>startkey_docid</i></td>
+				</tr>
+				<tr>
+					<td>endkey</td><td><input type="text" name="endkey" placeholder="Enter valid JSON here" size="30"></td><td>In view response, stop selecting view keys after <i>endkey</i></td>
+				</tr>
+				<tr>
+					<td>endkey_docid</td><td><input type="text" name="endkey_docid" placeholder="Enter valid doc id here" size="30"></td><td>In view response, stop adding view rows on <i>endkey</i> emited by <i>endkey_docid</i></td>
+				</tr>
+			</tbody>
+			</table>
+			<!--<div id="list">Test this list function with view : <strong><span class="viewslisting link">Click here...</span></strong></div>-->
+			<div id="list">Test this list function with view : <button class="viewslisting link">Choose...</button></div>
+			<div id="show">Test this show function with document : <strong><input type="text" name="docid" placeholder="Document id" size="30" autocomplete="off"></strong></div>
+			<div class="viewSettingsHeader"><button class="run">Run query</button> <span class="link open">Show query options</span><span class="link close">Hide query options</span></div>
+			<div class="queryPanel">
+				<div class="querying">Query in progress, please wait...</div>
+				<div class="results"></div>
+				<div class="error"></div>
+			</div>
+		</div>
+    </div>
+  </div></body>
+</html>
