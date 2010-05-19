@@ -221,7 +221,7 @@
                             continue;
 						var value = options[name];
 						if ($.inArray(name, ["key", "startkey", "endkey"]) >= 0) {
-						value = toJSON(value);
+							value = value !== null ? JSON.stringify(value) : null;
 						}
 						buf.push(encodeURIComponent(name) + "=" + encodeURIComponent(value));
 					}
@@ -234,14 +234,16 @@
 				type = "POST";
 				var keys = options["keys"];
 				delete options["keys"];
-				data = toJSON({ "keys": keys });
+				data = JSON.stringify({ "keys": keys });
 			}
 			$.ajax({
 				type: type,
 				data: data,
+				timeout: 1200000,
 				url: db.uri + "_design/" + name[0] +
 					"/_list/" + name[1] + '/' + view_name + encodeOptions(options),
 				dataType: options.evalJS ? options.dataType : "text",
+				error: function (xhr, textstatus) { xhr.errorThrown = textstatus ;},
 				complete: function (req) { onCompleteCallback(req,options); }
 			});
 		};
@@ -270,7 +272,6 @@
 				}
 				return buf.length ? "?" + buf.join("&") : "";
 			}
-// 			console.log("calling ajax");
 			var docId  =options.docId ? '/' + options.docId : '';
 			$.ajax({
 				type: type,
@@ -290,11 +291,11 @@
         //
         function onCompleteCallback (req, options) {
             var ct = req.getResponseHeader("content-type") || "", data = "";
-            if ( req.status == options.successStatus ) {
+            if ( typeof req.errorThrown == "undefined" && ( req.status == options.successStatus || req.status == 304 ) ) {
                 data = req.responseText;
                 if ( options.dataType === "json" || !options.dataType.length && ct.indexOf("json") >= 0 ) {
                     data = jQuery.parseJSON( data );
-                }
+				}
                 if (options.success) options.success(data,ct);
             } else {
                 data = req.responseText;
@@ -322,7 +323,7 @@
 
         // send a view request to the server
 		function queryViewToServer (button, panel, opts ) {
-			$.ajaxSetup({"timeout":30000});
+// 			$.ajaxSetup({"timeout":30000});
 			opts.options.success = function (data) {
 				if ( typeof data == "object" ) {
 					//json display
@@ -392,7 +393,7 @@
 
         // prepare list query and call the list function
 		function queryListToServer (button, panel, opts ) {
-			$.ajaxSetup({"timeout":30000});
+// 			$.ajaxSetup({"timeout":30000});
 			opts.options.success = function (data) {
                 var render = $("<pre></pre>");
 				if ( typeof data == "object" ) {
@@ -434,7 +435,6 @@
 
 			db.openDoc(docId, {
 				"success": function(doc) {
-// 					console.log(doc);
 					page.setCurrentDdoc(doc);
 					if ( entity+'s' in doc  && entityname in doc[entity+'s'] ) {
 						$("#wait").hide();
@@ -651,7 +651,6 @@
 
         // show page initializer
 		this.showBootstrap = function() {
-			console.log("Show");
 			var content = currentDdoc.shows[entityname];
 			bh = new bespinHandler ( 
 				$("#designer div.editor") , 
@@ -663,7 +662,6 @@
             })
             .delegate("span.saveCode","click",
 				function () {
-// 					console.log("SaveCode");
 					bh.setStatusSaving();
 					currentDdoc.shows[entityname] = bh.getValue();
 					db.saveDoc(currentDdoc, {
@@ -806,10 +804,11 @@
 			current = elements.find('input[name=keys]').val();
 			if ( current && isValidJSON(current) ) settings.keys = current;
 
+			// for an unknown reason placeholders of those two keys are taken as values by FF 3.6.3...
 			current = elements.find('input[name=startkey_docid]').val();
-			if ( current ) settings.startkey_docid = current;
+			if ( current && current != elements.find('input[name=startkey_docid]').attr('placeholder') ) settings.startkey_docid = current;
 			current = elements.find('input[name=endkey_docid]').val();
-			if ( current ) settings.endkey_docid = current;
+			if ( current && current != elements.find('input[name=startkey_docid]').attr('placeholder') ) settings.endkey_docid = current;
 			delete current;
 			return settings;
 		};
