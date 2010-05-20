@@ -1,36 +1,36 @@
 (function($) {
 
     // helper to validate that a string is a valid JSON string
-    var isValidJSON = function (text) {
-        var test=true;
-        try { var tmp = JSON.parse(text);} catch (err) {test = false;}
-        return test;
-    }
+	var isValidJSON = function (text) {
+		var test=true;
+		try { var tmp = JSON.parse(text);} catch (err) {test = false;}
+		return test;
+	}
 
     // ease the manipulations of the bespin editor
     // try to abstract API bc bespin API still is alpha
-  	var bespinHandler = function (element, statusBarElement, initialContent, options) {
-        var settings = {
-            "idle": function (statusbar) {
-                statusbar.html("ready");
-            },
-            "modified": function (statusbar) {
-                statusbar.html("The code has been modified. <span class=\"saveCode\">save code</span>");
-            },
-            "saving": function (statusbar) {
-                statusbar.html("Recording changes");
-            },
-            "recordSuccess": function(statusbar) {
-                statusbar.html("Code has been updated successfully");
-            },
-            "recordFailure": function (statusbar) {
-                statusbar.html("<span class=\"error\">Unable to save code</span>");
-            },
-            "idleEmpty": function (statusbar) {statusbar.html("Empty ! <span class=\"addTemplate\">insert template</span>");}
-        }
+	var bespinHandler = function (element, statusBarElement, initialContent, options) {
+		var settings = {
+			"idle": function (statusbar) {
+				statusbar.html("ready");
+			},
+			"modified": function (statusbar) {
+				statusbar.html("The code has been modified. <span class=\"saveCode\">save code</span>");
+			},
+			"saving": function (statusbar) {
+				statusbar.html("Recording changes");
+			},
+			"recordSuccess": function(statusbar) {
+				statusbar.html("Code has been updated successfully");
+			},
+			"recordFailure": function (statusbar) {
+				statusbar.html("<span class=\"error\">Unable to save code</span>");
+			},
+			"idleEmpty": function (statusbar) {statusbar.html("Empty ! <span class=\"addTemplate\">insert template</span>");}
+		}
 
-        $.extend(settings,options);
-        var self=this;
+		$.extend(settings,options);
+		var self=this;
 		var intervalId = null;
 		var embed = tiki.require("embedded");
 		var bespin = embed.useBespin(element.get(0),{
@@ -41,30 +41,30 @@
 				"fontsize": 11
 			}
 		});
-        var currentStatus = "";
-        var changeStatus = function(event) {
-            settings[event].call(self,statusBarElement);
-            currentStatus = event;
-        }
+		var currentStatus = "";
+		var changeStatus = function(event) {
+			settings[event].call(self,statusBarElement);
+			currentStatus = event;
+		}
 
 		changeStatus("idle");
 
 		var checkForAChange = this.checkForAChange = function() {
-            if ( bespin.value == initialContent ) {
-                if ( initialContent.length == 0 && currentStatus != "idleEmpty" ) {
-                    changeStatus("idleEmpty");
-                }
-                if ( initialContent.length > 0 && currentStatus != "idle" ) {
-                    changeStatus("idle");
-                }
-                if ( currentStatus == "modified" ) {
-                    changeStatus("idle");
-                }
-            } else {
-    			if (  currentStatus == "idle" || currentStatus == "idleEmpty" ) {
-                    changeStatus("modified");
-                }
-            }
+			if ( bespin.value == initialContent ) {
+				if ( initialContent.length == 0 && currentStatus != "idleEmpty" ) {
+					changeStatus("idleEmpty");
+				}
+				if ( initialContent.length > 0 && currentStatus != "idle" ) {
+					changeStatus("idle");
+				}
+				if ( currentStatus == "modified" ) {
+					changeStatus("idle");
+				}
+			} else {
+				if (  currentStatus == "idle" || currentStatus == "idleEmpty" ) {
+					changeStatus("modified");
+				}
+			}
 		};
 
 		intervalId = setInterval(checkForAChange,1000);
@@ -124,6 +124,7 @@
 			"list": "List",
 			"show": "Show"
 		};
+		var timeout = 300 ; // list/views timeout in seconds
 		var docId = null;
 		var entity = null;
 		var entityname = null;
@@ -132,7 +133,6 @@
 		if (urlParts.length) {
 			var tmp = decodeURIComponent(urlParts.shift());
 			if ( tmp != '_design' || ! urlParts.length ) {
-// 				return false;
 				urlParts = [];
 			}
 			docId = '_design/'+decodeURIComponent(urlParts.shift());
@@ -170,39 +170,39 @@
 							.replace(/>/g, "&gt;");
 		}
 
-        var templates = {
-            "map": {
-                "default": "function (doc) {\n\temit(doc._id,null);\n}"
-            },
-            "reduce": {
-                "default": "function (keys,values,rereduce) {\n\treturn sum(values);\n}"
-            },
-            "list": {
-                "default": "function (head, ctx) {\n\tvar row=null;\n\twhile (row = getRow() ) {\n\t\tif ( row.key ) send(\"<li>\"+row.key+\"</li>\");\n\t}\n}"
-            },
-            "show": {
-                "default": "function (doc,ctx) {}"
-            }
-        };
+		var templates = {
+			"map": {
+				"default": "function (doc) {\n\temit(doc._id,null);\n}"
+			},
+			"reduce": {
+				"default": "function (keys,values,rereduce) {\n\treturn sum(values);\n}"
+			},
+			"list": {
+				"default": "function (head, ctx) {\n\tvar row=null;\n\twhile (row = getRow() ) {\n\t\tif ( row.key ) send(\"<li>\"+row.key+\"</li>\");\n\t}\n}"
+			},
+			"show": {
+				"default": "function (doc,ctx) {}"
+			}
+		};
 
-        function codeTemplateListener (type) {
-            var count = 0, index = null;
-            if ( templates[type] ) {
-                for ( index in templates[type] ) {
-                    count++;
-                }
-                if ( count == 1 ) {
-                    for ( index in templates[type] ) {
-                        bh.setValue(templates[type][index]).checkForAChange();
-                    }
-                }
-            }
-        }
+		function codeTemplateListener (type) {
+			var count = 0, index = null;
+			if ( templates[type] ) {
+				for ( index in templates[type] ) {
+					count++;
+				}
+				if ( count == 1 ) {
+					for ( index in templates[type] ) {
+						bh.setValue(templates[type][index]).checkForAChange();
+					}
+				}
+			}
+		}
 
-        //
-        // sends a list request to the couch server
-        //
-		var list = function(name, view_name, options , ajaxOptions) {
+		//
+		// sends a list request to the couch server
+		//
+		var list = function (name, view_name, options) {
 			name = name.split('/');
 			options = options || {};
 			if ( !options.evalJS ) options.evalJS = false;
@@ -239,7 +239,7 @@
 			$.ajax({
 				type: type,
 				data: data,
-				timeout: 1200000,
+				timeout: timeout*1000,
 				url: db.uri + "_design/" + name[0] +
 					"/_list/" + name[1] + '/' + view_name + encodeOptions(options),
 				dataType: options.evalJS ? options.dataType : "text",
@@ -271,7 +271,7 @@
 					}
 				}
 				return buf.length ? "?" + buf.join("&") : "";
-			}
+			};
 			var docId  =options.docId ? '/' + options.docId : '';
 			$.ajax({
 				type: type,
@@ -284,147 +284,111 @@
 			);
 		};
 
-        //
-        // common function to parse show and list results. We try as much as possible to parse
-        // according to the content type header.
-        // If it's an error we try to force json conversion since couchdfb don't send JSON headers on error contents
-        //
-        function onCompleteCallback (req, options) {
-            var ct = req.getResponseHeader("content-type") || "", data = "";
-            if ( typeof req.errorThrown == "undefined" && ( req.status == options.successStatus || req.status == 304 ) ) {
-                data = req.responseText;
-                if ( options.dataType === "json" || !options.dataType.length && ct.indexOf("json") >= 0 ) {
-                    data = jQuery.parseJSON( data );
-				}
-                if (options.success) options.success(data,ct);
-            } else {
-                data = req.responseText;
-                try {
-                    var json = jQuery.parseJSON( data );
-                    data=json;
-                } catch ( e ) {}
 
-                if ( options.error ) {
-                    if ( typeof data == 'object' ) {
-                        options.error(req.status, data.error, data.reason);
-                    } else {
-                        options.error(req.status, data, "");
-                    }
-                } else {
-
-                    if ( typeof data == 'object' ) {
-                        alert(errorMessage + ": " + data.reason);
-                    } else {
-                        alert(errorMessage + ": " + data);
-                    }
-                }
-            }
-        }
-
-        // send a view request to the server
-		function queryViewToServer (button, panel, opts ) {
-// 			$.ajaxSetup({"timeout":30000});
-			opts.options.success = function (data) {
-				if ( typeof data == "object" ) {
-					//json display
-					var render = $("<pre></pre>");
-					render.html($.futon.formatJSON(data, {"html": true}));
-					$(".querying",panel).hide();
-                    $(".results",panel).html('<p>Response</p>').append(render).show();
-					button.removeAttr("disabled");
-				}
-			};
-			opts.options.error = function(a,b,c) {
-				if ( b != "timeout" ) {
-					$(".error",panel).empty().html("an error occured : "+a+" - "+b+" - "+c);
-					$(".querying",panel).hide();
-					$(".error",panel).show();
-					button.removeAttr("disabled");
-				}
-			};
-			db.view(opts.name,opts.options);
-		};
-
-        // prepare show query and call the show function
-		function queryShowToServer (button, panel, opts ) {
-
-			opts.options.success = function (data, ct) {
-                var render = $("<pre></pre>");
-				if ( typeof data == "object" ) {
-					render.html($.futon.formatJSON(data, {"html": true}));
-					$(".results",panel).empty().append(render);
-					if ( ct ) {
-						$(".results",panel).prepend('<p>Response (Content-Type: '+ct+')</p>');
-					} else {
-						$(".results",panel).prepend('<p>Response</p>');
+		var view = function (name, options ) {
+			function encodeOptions(options) {
+				var buf = [];
+				if (typeof(options) === "object" && options !== null) {
+				for (var name in options) {
+					if ($.inArray(name, ["error", "success"]) >= 0)
+					continue;
+					var value = options[name];
+					if ($.inArray(name, ["key", "startkey", "endkey"]) >= 0) {
+					value = JSON.stringify(value);
 					}
-					$(".querying",panel).hide();
-					$(".results",panel).show();
-					button.removeAttr("disabled");
-				} else {
-					render.html(escape(data));
-					$(".results",panel).empty().append(render);
-					if ( ct ) {
-						$(".results",panel).prepend('<p>Response (Content-Type: '+ct+')</p>');
+					buf.push(encodeURIComponent(name) + "=" + encodeURIComponent(value));
+				}
+				}
+				return buf.length ? "?" + buf.join("&") : "";
+			};
+			var name = name.split('/');
+			var options = options || {};
+			options.dataType = "json";
+			if ( !options.successStatus ) options.successStatus = 200;
+			var type = "GET";
+			var data= null;
+			if (options["keys"]) {
+				type = "POST";
+				var keys = options["keys"];
+				delete options["keys"];
+				data = JSON.stringify({ "keys": keys });
+			}
+			$.ajax({
+				type: type,
+				data: data,
+				timeout: timeout*1000,
+				url: db.uri + "_design/" + name[0] + "/_view/" + name[1] + encodeOptions(options),
+				dataType: "json",
+				error: function (xhr, textstatus) { xhr.errorThrown = textstatus ;},
+				complete: function (req) { onCompleteCallback(req,options); }
+			});
+		};
+
+		//
+		// common function to parse show and list results. We try as much as possible to parse
+		// according to the content type header.
+		// If it's an error we try to force json conversion since couchdb don't send JSON headers on error contents
+		//
+		function onCompleteCallback (req, options) {
+			var ct = req.getResponseHeader("content-type") || "", data = "";
+			if ( typeof req.errorThrown == "undefined" && ( req.status == options.successStatus || req.status == 304 ) ) {
+				data = req.responseText;
+				if ( options.dataType === "json" || !options.dataType.length && ct.indexOf("json") >= 0 ) {
+					data = jQuery.parseJSON( data );
+				}
+				if (options.success) options.success(data,ct);
+			} else {
+				data = req.responseText;
+				try {
+					var json = jQuery.parseJSON( data );
+					data=json;
+				} catch ( e ) {}
+
+				if ( options.error ) {
+					if ( typeof data == 'object' ) {
+						options.error(req.status, data.error, req.errorThrown);
 					} else {
-						$(".results",panel).prepend('<p>Response</p>');
+						options.error(req.status, req.errorThrown);
 					}
-					$(".querying",panel).hide();
-					$(".results",panel).show();
-					button.removeAttr("disabled");
-
-				}
-			};
-			opts.options.error = function(a,b,c) {
-				if ( b != "timeout" ) {
-					$(".error",panel).empty().html("an error occured : "+a+" - "+b+" - <pre class=\"left\"><code>"+c+"</code></pre>");
-					$(".querying",panel).hide();
-					$(".error",panel).show();
-					button.removeAttr("disabled");
 				} else {
-					$(".error",panel).empty().html("CouchServer take more than 30 seconds to answer.");
-					$(".querying",panel).hide();
-					$(".error",panel).show();
+
+					if ( typeof data == 'object' ) {
+						alert(errorMessage + ": " + data.reason);
+					} else {
+						alert(errorMessage + ": " + data);
+					}
 				}
-			};
-			opts.options.docId = opts.docId;
-			show(opts.name, opts.options, { "dataType": "" });
+			}
+		}
+
+
+		//
+		// common function to print errors
+		//
+		function onCompleteCallbackError (a,b,c) {
+			$("#designer .queryPanel .querying").hide();
+			if ( b != "timeout" ) {
+				$("#designer .queryPanel .error").html("an error occured : "+a+" - "+b+" - <pre class=\"left\"><code>"+c+"</code></pre>").show();
+			} else {
+				$("#designer .queryPanel .error").html("CouchServer took too long to answer.").show();
+			}
+			$("#designer button.run").removeAttr("disabled");
 		};
 
-        // prepare list query and call the list function
-		function queryListToServer (button, panel, opts ) {
-// 			$.ajaxSetup({"timeout":30000});
-			opts.options.success = function (data) {
-                var render = $("<pre></pre>");
-				if ( typeof data == "object" ) {
-					//json display
-					render.html($.futon.formatJSON(data, {"html": true}));
-                    $(".querying",panel).hide();
-                    $(".results",panel).html('<p>Response</p>').append(render).show();
-					button.removeAttr("disabled");
-				} else {
-					render.html(escape(data));
-					$(".querying",panel).hide();
-                    $(".results",panel).html('<p>Response</p>').append(render).show();
-					button.removeAttr("disabled");
-				}
-			};
-			opts.options.error = function(a,b,c) {
-				if ( b != "timeout" ) {
-                    $(".querying",panel).hide();
-					$(".error",panel).html("an error occured : "+a+" - "+b+" - "+c).show();
-					button.removeAttr("disabled");
-				} else {
-                    $(".querying",panel).hide();
-					$(".error",panel).html("CouchServer take more than 30 seconds to answer.").show();
-				}
-			};
-
-			list(opts.name,opts.view_name,opts.options, { "dataType": "" });
+		function onCompleteCallbackSuccess ( data, ct) {
+			if ( ct ) {	$("#designer .queryPanel .results").html('<p>Response (Content-Type: '+ct+')</p>');	} 
+			else {  	$("#designer .queryPanel .results").html('<p>Response</p>'); }
+			var render = $("<pre></pre>");
+			$("#designer .queryPanel .querying").hide();
+			if ( typeof data == "object" ) {
+				//json display
+				render.html($.futon.formatJSON(data, {"html": true}));
+			} else {
+				render.html(escape(data));
+			}
+			$("#designer .queryPanel  .results").append(render).show();
+			$("#designer button.run").removeAttr("disabled");
 		};
-
-
-
 
 
         // dispatcher between homepage, view, list, show
@@ -473,7 +437,6 @@
 
 			$("#designer div.editorWrapper").removeClass("noview").addClass("view");
 
-			
 			$("#designer div.editorSwitcherBar").html("<strong>Map</strong>").show().click(function() {
 				if ( current == "map" ) {
 					current = "reduce";
@@ -489,17 +452,17 @@
 				buffer_template = tmp_template;
 			});
 
-            $("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
-                codeTemplateListener(current);
-            })
-            .delegate("span.saveCode","click",
+			$("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
+				codeTemplateListener(current);
+			})
+			.delegate("span.saveCode","click",
 				function () {
 					bh.setStatusSaving();
 					var cur = current.length ? current : "map";
 					currentDdoc.views[entityname][cur] = bh.getValue();
-                    if ( !currentDdoc.views[entityname][cur].length ) {
-                        delete currentDdoc.views[entityname][cur];
-                    }
+					if ( !currentDdoc.views[entityname][cur].length ) {
+						delete currentDdoc.views[entityname][cur];
+					}
 					db.saveDoc(currentDdoc, {
 						"success": function() {
 							bh.setStatusSaveResultOk();
@@ -513,10 +476,11 @@
 				}
 			);
 
-			$("#designer table input[name=key]").checkJSON();
-			$("#designer table input[name=keys]").checkJSON();
-			$("#designer table input[name=startkey]").checkJSON();
-			$("#designer table input[name=endkey]").checkJSON();
+			$("#designer table input[name=key]")
+			.add("#designer table input[name=keys]")
+			.add("#designer table input[name=startkey]")
+			.add("#designer table input[name=endkey]")
+			.checkJSON();
 			$("#designer .viewSettingsHeader .open").click(function() {
 				$(this).hide();
 				$("#designer table").show();
@@ -540,13 +504,10 @@
 				if ( opts.options.key ) opts.options.key = JSON.parse(opts.options.key);
 				if ( opts.options.startkey ) opts.options.startkey = JSON.parse(opts.options.startkey);
 				if ( opts.options.endkey ) opts.options.endkey = JSON.parse(opts.options.endkey);
-				queryViewToServer(
-					$("#designer button.run"),
-					$("#designer .queryPanel"),
-					opts
-				);
+				opts.options.success = onCompleteCallbackSuccess;
+				opts.options.error = onCompleteCallbackError ;
+				view(opts.name,opts.options);
 			});
-
 		}
 
         // list page initializer
@@ -555,11 +516,11 @@
 			bh = new bespinHandler ( 
 				$("#designer div.editor") , 
 				$("#designer div.editorStatusBar") , content, {}
-            );
-            $("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
-                codeTemplateListener("list");
-            })
-            .delegate("span.saveCode","click",
+			);
+			$("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
+				codeTemplateListener("list");
+			})
+			.delegate("span.saveCode","click",
 				function () {
 					bh.setStatusSaving();
 					currentDdoc.lists[entityname] = bh.getValue();
@@ -576,10 +537,11 @@
 				}
 			);
 
-			$("#designer table input[name=key]").checkJSON();
-			$("#designer table input[name=keys]").checkJSON();
-			$("#designer table input[name=startkey]").checkJSON();
-			$("#designer table input[name=endkey]").checkJSON();
+			$("#designer table input[name=key]")
+			.add("#designer table input[name=keys]")
+			.add("#designer table input[name=startkey]")
+			.add("#designer table input[name=endkey]")
+			.checkJSON();
 			$("#designer .viewSettingsHeader .open").click(function() {
 				$(this).hide();
 				$("#designer table").show();
@@ -604,11 +566,9 @@
 				if ( opts.options.key ) opts.options.key = JSON.parse(opts.options.key);
 				if ( opts.options.startkey ) opts.options.startkey = JSON.parse(opts.options.startkey);
 				if ( opts.options.endkey ) opts.options.endkey = JSON.parse(opts.options.endkey);
-				queryListToServer(
-					$("#designer button.run"),
-					$("#designer .queryPanel"),
-					opts
-				);
+				opts.options.success = onCompleteCallbackSuccess;
+				opts.options.error = onCompleteCallbackError ;
+				list(opts.name,opts.view_name,opts.options);
 			});
 			$("#designer button.run").attr("disabled",true);
 
@@ -657,25 +617,22 @@
 				$("#designer div.editorStatusBar") , 
 				content, {}
 			);
-            $("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
-                codeTemplateListener("show");
-            })
-            .delegate("span.saveCode","click",
-				function () {
-					bh.setStatusSaving();
-					currentDdoc.shows[entityname] = bh.getValue();
-					db.saveDoc(currentDdoc, {
-						"success": function(resp) {
-							currentDdoc._rev = resp.rev;
-							bh.setStatusSaveResultOk();
-							bh.setInitialContent(currentDdoc.shows[entityname]);
-						},
-						"error": function () {
-							bh.setStatusSaveResultKo();
-						}
-					});
-				}
-			);
+			$("#designer div.editorStatusBar")
+			.delegate("span.addTemplate","click", function () { codeTemplateListener("show"); })
+            .delegate("span.saveCode","click", function () {
+				bh.setStatusSaving();
+				currentDdoc.shows[entityname] = bh.getValue();
+				db.saveDoc(currentDdoc, {
+					"success": function(resp) {
+						currentDdoc._rev = resp.rev;
+						bh.setStatusSaveResultOk();
+						bh.setInitialContent(currentDdoc.shows[entityname]);
+					},
+					"error": function () {
+						bh.setStatusSaveResultKo();
+					}
+				});
+			});
 			$("#designer .viewSettingsHeader .open").hide();
 			$("#designer .viewSettingsHeader .close").hide();
 
@@ -688,11 +645,11 @@
 					"name": currentDdoc._id.substr(8)+'/'+entityname,
 					"docId": $("#show input[name=docid]").val()
 				};
-				queryShowToServer(
-					$("#designer button.run"),
-					$("#designer .queryPanel"),
-					opts
-				);
+				opts.options.success = onCompleteCallbackSuccess;
+				opts.options.error = onCompleteCallbackError ;
+				opts.options.docId = opts.docId;
+				show(opts.name, opts.options);
+
 			});
 			$("#viewoptions").hide();
 			$("#show").show();
@@ -743,7 +700,6 @@
 									);
 								}
 							}
-//                            ewrap.append();
 							docwrap.append(ewrap).append('<div>'+enwrap.join(', ')+'</div>');
 						}
 						element.append(docwrap);
@@ -764,7 +720,7 @@
 			});
 		}
 
-        // parses the view form and returns it as an object
+		// parses the view form and returns it as an object
 		this.viewQuery = function (elements) {
 			var settings = {};
 			var current = elements.find('input[name=limit]').val();
@@ -816,73 +772,72 @@
         // launch the add view dialog, and add a new view
 		this.addView = function(ddoc) {
 			$.showDialog("designer/_create_view.html", {
-			submit: function(data, callback) {
-				if (!data.name || data.name.length == 0) {
-				callback({name: "Please enter a name."});
-				return;
-				}
-
-				db.openDoc(ddoc,{
-					error: function(status, id, reason) { callback({name: reason}) },
-					success: function(doc) {
-						if ( ! doc.views ) {
-							doc.views = {};
-						}
-						if ( doc.views[data.name] ) {
-							location.href = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/view/'+encodeURIComponent(data.name);
-						} else {
-							doc.views[data.name] = {'map':""};
-							db.saveDoc(doc, {
-								error: function(status, id, reason) { callback({name: reason}) },
-								success: function(resp) {
-									location.href = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/view/'+encodeURIComponent(data.name);
-									callback();
-								}
-							});
-						}
+				submit: function(data, callback) {
+					if (!data.name || data.name.length == 0) {
+					callback({name: "Please enter a name."});
+					return;
 					}
-				});
-			}
+
+					db.openDoc(ddoc,{
+						error: function(status, id, reason) { callback({name: reason}) },
+						success: function(doc) {
+							if ( ! doc.views ) {
+								doc.views = {};
+							}
+							if ( doc.views[data.name] ) {
+								location.href = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/view/'+encodeURIComponent(data.name);
+							} else {
+								doc.views[data.name] = {'map':""};
+								db.saveDoc(doc, {
+									error: function(status, id, reason) { callback({name: reason}) },
+									success: function(resp) {
+										location.href = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/view/'+encodeURIComponent(data.name);
+										callback();
+									}
+								});
+							}
+						}
+					});
+				}
 			});
 			return false;
 		};
 
-        // launch the add list dialog, and add a new list
+		// launch the add list dialog, and add a new list
 		this.addList = function(ddoc) {
 			$.showDialog("designer/_create_list.html", {
-			submit: function(data, callback) {
-				if (!data.name || data.name.length == 0) {
-				callback({name: "Please enter a name."});
-				return;
-				}
-
-				db.openDoc(ddoc,{
-					error: function(status, id, reason) { callback({name: reason}) },
-					success: function(doc) {
-						var redirect = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/list/'+encodeURIComponent(data.name);
-						if ( ! doc.lists ) {
-							doc.lists = {};
-						}
-						if ( doc.lists[data.name] ) {
-							location.href = redirect;
-						} else {
-							doc.lists[data.name] = "";
-							db.saveDoc(doc, {
-								error: function(status, id, reason) { callback({name: reason}) },
-								success: function(resp) {
-									location.href = redirect;
-									callback();
-								}
-							});
-						}
+				submit: function(data, callback) {
+					if (!data.name || data.name.length == 0) {
+					callback({name: "Please enter a name."});
+					return;
 					}
-				});
-			}
+					db.openDoc(ddoc,{
+						error: function(status, id, reason) { callback({name: reason}) },
+						success: function(doc) {
+							var redirect = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/list/'+encodeURIComponent(data.name);
+							if ( ! doc.lists ) {
+								doc.lists = {};
+							}
+							if ( doc.lists[data.name] ) {
+								location.href = redirect;
+							} else {
+								doc.lists[data.name] = "";
+								db.saveDoc(doc, {
+									error: function(status, id, reason) { callback({name: reason}) },
+									success: function(resp) {
+										location.href = redirect;
+										callback();
+									}
+								});
+							}
+						}
+					});
+				}
 			});
 			return false;
 		};
 
-        // launch the add show dialog, and add a new show
+		// launch the add show dialog, and add a new show
 		this.addShow = function(ddoc) {
 			$.showDialog("designer/_create_show.html", {
 			submit: function(data, callback) {
@@ -896,8 +851,8 @@
 						var redirect = "designer.html?" + encodeURIComponent(dbName) +'/_design/'+ encodeURIComponent(ddoc.substr(8))+'/show/'+encodeURIComponent(data.name);
 						if ( ! doc.shows ) { doc.shows = {}; }
 						if ( doc.shows[data.name] ) { 
-                            location.href = redirect;
-                        } else {
+							location.href = redirect;
+						} else {
 							doc.shows[data.name] = "";
 							db.saveDoc(doc, {
 								error: function(status, id, reason) { callback({name: reason}) },
@@ -914,13 +869,10 @@
 			return false;
 		}
 
-        // set the current design doc
+		// set the current design doc
 		this.setCurrentDdoc = function(doc) {			currentDdoc = doc;		};
-        // get the current design doc
+		// get the current design doc
 		this.getCurrentDdoc = function() {			return currentDdoc;		};
-
-
-
 	}
 });
 
