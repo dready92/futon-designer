@@ -330,7 +330,9 @@
 		// If it's an error we try to force json conversion since couchdb don't send JSON headers on error contents
 		//
 		function onCompleteCallback (req, options) {
-			var ct = req.getResponseHeader("content-type") || "", data = "";
+			var ct = '';
+			try {	ct = req.getResponseHeader("content-type") || ''; } catch (e) {}
+			var data = "";
 			if ( typeof req.errorThrown == "undefined" && ( req.status == options.successStatus || req.status == 304 ) ) {
 				data = req.responseText;
 				if ( options.dataType === "json" || !options.dataType.length && ct.indexOf("json") >= 0 ) {
@@ -345,10 +347,12 @@
 				} catch ( e ) {}
 
 				if ( options.error ) {
-					if ( typeof data == 'object' ) {
-						options.error(req.status, data.error, req.errorThrown);
+					var status = '';
+					try { status = req.status } catch (e) {}
+					if ( typeof data == 'object' && data !== null ) {
+						options.error(status, data.error, req.errorThrown);
 					} else {
-						options.error(req.status, req.errorThrown);
+						options.error(status, req.errorThrown);
 					}
 				} else {
 
