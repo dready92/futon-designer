@@ -55235,23 +55235,65 @@ exports.metadata =
             {
                 "ep": "extensionpoint",
                 "name": "extensionpoint",
-                "description": "Use the 'extensionpoint' extension point to \
-define new extension points. You can provide an 'indexOn' property to name a \
-property of extensions through which you'd like to be able to easily look up the \
-extension. You can also provide a 'register' and 'unregister' properties which are \
-pointers to functions that are called whenever a new extension is discovered or \
-removed, respectively. 'register' and 'unregister' \
-should be used sparingly, because your plugin will be loaded whenever a \
-matching plugin is available."
+                "description": "Defines a new extension point",
+                "params": [
+                    {
+                        "name": "name",
+                        "type": "string",
+                        "description": "the extension point's name",
+                        "required": true
+                    },
+                    {
+                        "name": "description",
+                        "type": "string",
+                        "description": "description of what the extension point is for"
+                    },
+                    {
+                        "name": "params",
+                        "type": "array of objects",
+                        "description": "parameters that provide the metadata for a given extension. Each object should have name and description, minimally. It can also have a 'type' (eg string, pointer, or array) and required to denote whether or not this parameter must be present on the extension."
+                    },
+                    {
+                        "name": "indexOn",
+                        "type": "string",
+                        "description": "You can provide an 'indexOn' property  \
+                        to name a property of extensions through which you'd  \
+                        like to be able to easily look up the extension."
+                    },
+                    {
+                        "name": "register",
+                        "type": "pointer",
+                        "description": "function that is called when a new extension is discovered. Note that this should be used sparingly, because it will cause your plugin to be loaded whenever a matching plugin appears."
+                    },
+                    {
+                        "name": "unregister",
+                        "type": "pointer",
+                        "description": "function that is called when an extension is removed. Note that this should be used sparingly, because it will cause your plugin to be loaded whenever a matching plugin appears."
+                    }
+                ]
             },
             {
                 "ep": "extensionpoint",
                 "name": "extensionhandler",
-                "description": "extensionhandlers are able to have 'register' \
-and 'unregister' pointers to functions that are called with each extension as \
-it is discovered or unregistered. Use 'register' sparingly as your plugin will \
-be loaded automatically if there is a matching extension (and not just when \
-your extension's functionality is required)."
+                "description": "Used to attach listeners ",
+                "params": [
+                    {
+                        "name": "name",
+                        "type": "string",
+                        "description": "name of the extension point to listen to",
+                        "required": true
+                    },
+                    {
+                        "name": "register",
+                        "type": "pointer",
+                        "description": "function that is called when a new extension is discovered. Note that this should be used sparingly, because it will cause your plugin to be loaded whenever a matching plugin appears."
+                    },
+                    {
+                        "name": "unregister",
+                        "type": "pointer",
+                        "description": "function that is called when an extension is removed. Note that this should be used sparingly, because it will cause your plugin to be loaded whenever a matching plugin appears."
+                    }
+                ]
             },
             {
                 "ep": "extensionpoint",
@@ -55259,7 +55301,14 @@ your extension's functionality is required)."
                 "description": "A function that should be called at startup. This should be used \
 sparingly, as these plugins will be eagerly loaded at the beginning. All that's needed for this \
 extension point is a pointer to a function that takes no arguments.",
-                "register": "plugins#startupHandler"
+                "register": "plugins#startupHandler",
+                "params": [
+                    {
+                        "name": "pointer",
+                        "description": "Pointer to a function that takes no parameters",
+                        "required": true
+                    }
+                ]
             },
             {
                 "ep": "extensionpoint",
@@ -55483,6 +55532,57 @@ installGlobals();
 
 });
 
+tiki.module("bespin:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+// BEGIN VERSION BLOCK
+/** The core version of the Bespin system */
+exports.versionNumber = '0.7.3';
+
+/** The version number to display to users */
+exports.versionCodename = 'Bryce';
+
+/** The version number of the API (to ensure that the client and server are talking the same language) */
+exports.apiVersion = '4';
+// END VERSION BLOCK
+
+});
+
 tiki.module("bespin:plugins",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -55527,22 +55627,10 @@ require("globals");
 var Promise = require("promise").Promise;
 var builtins = require("builtins");
 var console = require("console").console;
+var objectKeys = require("util/util").objectKeys;
 var r = require;
 
 var tiki = require.loader;
-
-var object_keys = Object.keys;
-if (!object_keys) {
-    object_keys = function(obj) {
-        var k, ret = [];
-        for (k in obj) {
-            if (obj.hasOwnProperty(k)) {
-                ret.push(k);
-            }
-        }
-        return ret;
-    };
-}
 
 /**
  * Split an extension pointer from module/path#objectName into an object of the
@@ -55654,6 +55742,27 @@ exports.ExtensionPoint = SC.Object.extend({
         this.extensions = [];
         this.handlers = [];
     },
+    
+    /**
+    * Retrieves the list of plugins which provide extensions
+    * for this extension point.
+    */
+    getImplementingPlugins: function() {
+        var pluginSet = {};
+        this.extensions.forEach(function(ext) {
+            pluginSet[ext._pluginName] = true;
+        });
+        var matches = objectKeys(pluginSet);
+        matches.sort();
+        return matches;
+    },
+    
+    /*
+     * get the name of the plugin that defines this extension point.
+     */
+    getDefiningPluginName: function() {
+        return this._pluginName;
+    },
 
     /**
      * If we are keeping an index (an indexOn property is set on the
@@ -55694,6 +55803,28 @@ exports.ExtensionPoint = SC.Object.extend({
                 }, "unregister");
             }
         });
+    },
+
+    /**
+     * Order the extensions by a plugin order.
+     */
+    orderExtensions: function(pluginOrder) {
+        var orderedExt = [];
+        var n;
+
+        for (var i = 0; i < pluginOrder.length; i++) {
+            n = 0;
+            while (n != this.extensions.length) {
+                if (this.extensions[n]._pluginName === pluginOrder[i]) {
+                    orderedExt.push(this.extensions[n]);
+                    this.extensions.splice(n, 1);
+                } else {
+                    n ++;
+                }
+            }
+        }
+
+        this.extensions = orderedExt.concat(this.extensions);
     }
 });
 
@@ -55702,7 +55833,7 @@ exports.Plugin = SC.Object.extend({
         var provides = this.provides;
         var self = this;
         this.provides.forEach(function(extension) {
-            var ep = self.get("catalog").getExtensionPoint(extension.ep);
+            var ep = self.get("catalog").getExtensionPoint(extension.ep, true);
             ep.register(extension);
         });
     },
@@ -55711,7 +55842,7 @@ exports.Plugin = SC.Object.extend({
         var provides = this.provides;
         var self = this;
         this.provides.forEach(function(extension) {
-            var ep = self.get("catalog").getExtensionPoint(extension.ep);
+            var ep = self.get("catalog").getExtensionPoint(extension.ep, true);
             ep.unregister(extension);
         });
     },
@@ -55758,8 +55889,18 @@ exports.Plugin = SC.Object.extend({
     _cleanup: function() {
         var pluginName = this.get("name");
 
-        // remove all traces of the plugin
+        // Remove the css files.
+        this.stylesheets.forEach(function(stylesheet) {
+            var links = document.getElementsByTagName('link');
+            for (var i = 0; i < links.length; i++) {
+                if (links[i].href.indexOf(stylesheet.url) != -1) {
+                    links[i].parentNode.removeChild(links[i]);
+                    break;
+                }
+            }
+        });
 
+        // remove all traces of the plugin
         var nameMatch = new RegExp("^" + pluginName + ":");
 
         _removeFromList(nameMatch, tiki.scripts);
@@ -55812,7 +55953,7 @@ exports.Plugin = SC.Object.extend({
 
         var self = this;
 
-        var pluginList = object_keys(this.catalog.plugins);
+        var pluginList = objectKeys(this.catalog.plugins);
 
         this._findDependents(pluginList, dependents);
 
@@ -55886,7 +56027,7 @@ exports.Plugin = SC.Object.extend({
         }
 
         // reload the plugin metadata
-        this.catalog.loadMetadata(this.reloadURL).then(
+        this.catalog.loadMetadataFromURL(this.reloadURL).then(
             function() {
                 // actually load the plugin, so that it's ready
                 // for any dependent plugins
@@ -55914,6 +56055,10 @@ exports.Plugin = SC.Object.extend({
                         }
                     });
                 });
+            }, function() {
+                // TODO: There should be more error handling then just logging
+                // to the command line.
+                console.error('Failed to load metadata from ' + self.reloadURL);
             }
         );
     }
@@ -55923,12 +56068,14 @@ exports.Catalog = SC.Object.extend({
     init: function() {
         this.points = {};
         this.plugins = {};
+        this.deactivatedPlugins = {};
+        this._extensionsOrdering = [];
 
         // set up the "extensionpoint" extension point.
         // it indexes on name.
-        var ep = this.getExtensionPoint("extensionpoint");
+        var ep = this.getExtensionPoint("extensionpoint", true);
         ep.set("indexOn", "name");
-        this.load(builtins.metadata);
+        this.loadMetadata(builtins.metadata);
     },
 
     /**
@@ -55966,9 +56113,11 @@ exports.Catalog = SC.Object.extend({
         return obj;
     },
 
-    /** Retrieve an extension point object by name. */
-    getExtensionPoint: function(name) {
-        if (this.points[name] === undefined) {
+    /** Retrieve an extension point object by name, optionally creating it if it
+    * does not exist.
+    */
+    getExtensionPoint: function(name, create) {
+        if (create && this.points[name] === undefined) {
             this.points[name] = exports.ExtensionPoint.create({
                 name: name,
                 catalog: this
@@ -55990,6 +56139,26 @@ exports.Catalog = SC.Object.extend({
     },
 
     /**
+     * Sets the order of the plugin's extensions. Note that this orders *only*
+     * Extensions and nothing else (load order of CSS files e.g.)
+     */
+    orderExtensions: function(pluginOrder) {
+        pluginOrder = pluginOrder || this._extensionsOrdering;
+
+        for (name in this.points) {
+            this.points[name].orderExtensions(pluginOrder);
+        }
+        this._extensionsOrdering = pluginOrder;
+    },
+
+    /**
+     * Returns the current plugin exentions ordering.
+     */
+    getExtensionsOrdering: function() {
+        return this._extensionsOrdering;
+    },
+
+    /**
      * Look up an extension in an indexed extension point by the given key. If
      * the extension point or the key are unknown, undefined will be returned.
      */
@@ -56003,7 +56172,10 @@ exports.Catalog = SC.Object.extend({
     },
 
     _registerExtensionPoint: function(extension) {
-        var ep = this.getExtensionPoint(extension.name);
+        var ep = this.getExtensionPoint(extension.name, true);
+        ep.description = extension.description;
+        ep._pluginName = extension._pluginName;
+        ep.params = extension.params;
         ep.handlers.push(extension);
         if (extension.indexOn) {
             ep.set("indexOn", extension.indexOn);
@@ -56011,7 +56183,7 @@ exports.Catalog = SC.Object.extend({
     },
 
     _registerExtensionHandler: function(extension) {
-        var ep = this.getExtensionPoint(extension.name);
+        var ep = this.getExtensionPoint(extension.name, true);
         ep.handlers.push(extension);
         if (extension.register) {
             extension.load(function(register) {
@@ -56054,11 +56226,38 @@ exports.Catalog = SC.Object.extend({
         return sorted;
     },
 
-    load: function(metadata) {
+    loadMetadata: function(metadata) {
+        var plugins = this.plugins;
+
+        for (pluginName in metadata) {
+            // Skip if the plugin is not activated.
+            if (this.deactivatedPlugins[pluginName]) {
+                continue;
+            }
+
+            var md = metadata[pluginName];
+            if (md.errors) {
+                console.error("Plugin ", pluginName, " has errors:");
+                md.errors.forEach(function(error) {
+                    console.error(error);
+                });
+                delete metadata[pluginName];
+                continue;
+            }
+
+            if (md.dependencies) {
+                md.depends = objectKeys(md.dependencies);
+            }
+            tiki.register(pluginName, md);
+        }
+
         this._toposort(metadata).forEach(function(name) {
             var md = metadata[name];
+            var activated = !(this.deactivatedPlugins[name]);
+
             md.catalog = this;
-            if (md.provides) {
+            // Skip if the plugin is not activated.
+            if (md.provides && activated) {
                 var provides = md.provides;
                 for (var i = 0; i < provides.length; i++) {
                     var extension = exports.Extension.create(provides[i]);
@@ -56070,7 +56269,7 @@ exports.Catalog = SC.Object.extend({
                     } else if (epname == "extensionhandler") {
                         this._registerExtensionHandler(extension);
                     }
-                    var ep = this.getExtensionPoint(extension.ep);
+                    var ep = this.getExtensionPoint(extension.ep, true);
                     ep.register(extension);
                 }
             } else {
@@ -56078,8 +56277,14 @@ exports.Catalog = SC.Object.extend({
             }
             md.name = name;
             var plugin = exports.Plugin.create(md);
-            this.plugins[name] = plugin;
+            plugins[name] = plugin;
         }, this);
+
+        for (pluginName in metadata) {
+            this._checkLoops(pluginName, plugins, []);
+        }
+
+        this.orderExtensions();
     },
 
     /**
@@ -56102,13 +56307,22 @@ exports.Catalog = SC.Object.extend({
      * Retrieve metadata from the server. Returns a promise that is
      * resolved when the metadata has been loaded.
      */
-    loadMetadata: function(url) {
+    loadMetadataFromURL: function(url, type) {
         var pr = new Promise();
-        SC.Request.create({ address: url }).notify(0, this,
-            this._metadataFinishedLoading, { callback: function(catalog, response) {
-                pr.resolve({catalog: catalog, response: response});
-            }}).send("");
+        SC.Request.create({ address: url, type: type || "GET" }).notify(0, this,
+            this._metadataFinishedLoading, pr).send("");
         return pr;
+    },
+
+    deactivatePlugin: function(pluginName) {
+        var plugins = this.get("plugins");
+        var plugin = plugins[pluginName];
+        if (plugin !== undefined) {
+            plugin.unregister();
+            plugin._cleanup();
+        }
+
+        this.deactivatedPlugins[pluginName] = true;
     },
 
     /**
@@ -56118,7 +56332,8 @@ exports.Catalog = SC.Object.extend({
         var plugins = this.get("plugins");
         var plugin = plugins[pluginName];
         if (plugin == undefined) {
-            throw new Error("Attempted to remove plugin " + pluginName + " which does not exist.");
+            throw new Error("Attempted to remove plugin " + pluginName
+                                            + " which does not exist.");
         }
 
         plugin.unregister();
@@ -56138,38 +56353,20 @@ exports.Catalog = SC.Object.extend({
         return plugin.resourceURL;
     },
 
-    _metadataFinishedLoading: function(response, params) {
+    _metadataFinishedLoading: function(response, pr) {
         var pluginName;
-        
+
         if (!response.isError) {
             var body = response.body();
             var data = JSON.parse(body);
-            for (pluginName in data) {
-                var md = data[pluginName];
-                if (md.errors) {
-                    console.error("Plugin ", pluginName, " has errors:");
-                    md.errors.forEach(function(error) {
-                        console.error(error);
-                    });
-                    delete data[pluginName];
-                    continue;
-                }
-                
-                if (md.dependencies) {
-                    md.depends = object_keys(md.dependencies);
-                }
-                tiki.register(pluginName, md);
-            }
+            this.loadMetadata(data);
 
-            this.load(data);
-
-            var plugins = this.plugins;
-            for (pluginName in data) {
-                this._checkLoops(pluginName, plugins, []);
-            }
-        }
-        if (params.callback) {
-            params.callback(this, response);
+            pr.resolve({catalog: this, response: response});
+        } else {
+            var xhr = response.errorObject.errorValue.rawRequest;
+            var error = new Error(xhr.responseText + ' (Status ' + xhr.status + ")");
+            error.xhr = xhr;
+            pr.reject(error);
         }
     },
 
@@ -56289,7 +56486,7 @@ var _removeFromList = function(regex, array, matchFunc) {
 };
 
 var _removeFromObject = function(regex, obj) {
-    var keys = object_keys(obj);
+    var keys = objectKeys(obj);
     var i = keys.length;
     while (--i > 0) {
         if (regex.exec(keys[i])) {
@@ -56313,417 +56510,236 @@ exports.getUserPlugins = function() {
 });
 
 tiki.module("bespin:promise",function(require,exports,module) {
-// This is Kris Zyp's implementation of the CommonJS Promises spec
-// (not yet ratified as of this writing). This is taken from the Narwhal
-// repository.
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
 
-// this is based on the CommonJS spec for promises:
-// http://wiki.commonjs.org/wiki/Promises
-
-// A typical usage:
-// A default Promise constructor can be used to create a self-resolving deferred/promise:
-// var Promise = require("Promise:core/promise").Promise;
-//    var promise = new Promise();
-// asyncOperation(function(){
-//    Promise.resolve("successful result");
-// });
-//    promise -> given to the consumer
-//
-//    A consumer can use the promise
-//    promise.then(function(result){
-//        ... when the action is complete this is executed ...
-//   },
-//   function(error){
-//        ... executed when the promise fails
-//  });
-//
-// Alternately, a provider can create a deferred and resolve it when it completes an action.
-// The deferred object a promise object that provides a separation of consumer and producer to protect
-// promises from being fulfilled by untrusted code.
-// var defer = require("Promise:core/promise").defer;
-//    var deferred = defer();
-// asyncOperation(function(){
-//    deferred.resolve("successful result");
-// });
-//    deferred.promise -> given to the consumer
-//
-//    Another way that a consumer can use the promise (using promise.then is also allowed)
-// var when = require("Promise:core/promise").when;
-// when(promise,function(result){
-//        ... when the action is complete this is executed ...
-//   },
-//   function(error){
-//        ... executed when the promise fails
-//  });
-
-var console = require('console').console;
-var printStackTrace = require("bespin:util/stacktrace").printStackTrace;
-
-try {
-    var enqueue = require("event-queue").enqueue;
-}
-catch(e) {
-    // squelch the error, and only complain if the queue is needed
-}
-if (!enqueue) {
-    enqueue = function(func){
-        func();
-    };
-}
+var console = require('bespin:console').console;
+var Trace = require('bespin:util/stacktrace').Trace;
 
 /**
- * Default constructor that creates a self-resolving Promise. Not all promise implementations
- * need to use this constructor.
+ * A promise can be in one of 2 states.
+ * The ERROR and SUCCESS states are terminal, the PENDING state is the only
+ * start state.
  */
-var Promise = function(canceller) {
-};
+var ERROR = -1;
+var PENDING = 0;
+var SUCCESS = 1;
 
 /**
- * Promise implementations must provide a "then" function.
+ * We give promises and ID so we can track which are outstanding
  */
-Promise.prototype.then = function(resolvedCallback, errorCallback, progressCallback){
-    throw new TypeError("The Promise base class is abstract, this function must be implemented by the Promise implementation");
-};
+var _nextId = 0;
 
 /**
- * If an implementation of a promise supports a concurrency model that allows
- * execution to block until the promise is resolved, the wait function may be
- * added.
+ * Outstanding promises. Handy list for debugging only.
  */
+exports._outstanding = [];
+
 /**
- * If an implementation of a promise can be cancelled, it may add this function
+ * Recently resolved promises. Also for debugging only.
  */
- // Promise.prototype.cancel = function(){
- // };
+exports._recent = [];
 
-Promise.prototype.get = function(propertyName){
-    return this.then(function(value){
-        return value[propertyName];
-    });
-};
-
-Promise.prototype.put = function(propertyName, value){
-    return this.then(function(object){
-        return object[propertyName] = value;
-    });
-};
-
-Promise.prototype.call = function(functionName /*, args */){
-    return this.then(function(value){
-        return value[propertyName].apply(value, Array.prototype.slice.call(arguments, 1));
-    });
-};
-
-/** Dojo/NodeJS methods*/
-Promise.prototype.addCallback = function(callback){
-    return this.then(callback);
-};
-
-Promise.prototype.addErrback = function(errback){
-    return this.then(function(){}, errback);
-};
-
-/*Dojo methods*/
-Promise.prototype.addBoth = function(callback){
-    return this.then(callback, callback);
-};
-
-Promise.prototype.addCallbacks = function(callback, errback){
-    return this.then(callback, errback);
-};
-
-/*NodeJS method*/
-Promise.prototype.wait = function(){
-    return exports.wait(this);
-};
-
-Deferred.prototype = Promise.prototype;
-// A deferred provides an API for creating and resolving a promise.
-exports.Promise = exports.Deferred = exports.defer = defer;
-function defer(){
-    return new Deferred();
+/**
+ * Remove the given {promise} from the _outstanding list, and add it to the
+ * _recent list, pruning more than 20 recent promises from that list.
+ */
+function complete(promise) {
+    delete exports._outstanding[promise._id];
+    exports._recent.push(promise);
+    while (exports._recent.length > 20) {
+        exports._recent.shift();
+    }
 }
 
-var contextHandler = exports.contextHandler = {};
+/**
+ * Create an unfulfilled promise
+ */
+exports.Promise = function () {
+    this._status = PENDING;
+    this._value = undefined;
+    this._onSuccessHandlers = [];
+    this._onErrorHandlers = [];
 
-function Deferred(canceller, rejectImmediately){
-    var result, finished, isError, waiting = [], handled;
-    var promise = this.promise = new Promise();
-    var currentContextHandler = contextHandler.getHandler && contextHandler.getHandler();
-
-    function notifyAll(value){
-        if(finished){
-            throw new Error("This deferred has already been resolved");
-        }
-        result = value;
-        finished = true;
-        if(rejectImmediately && isError && waiting.length === 0){
-            throw result;
-        }
-        for(var i = 0; i < waiting.length; i++){
-            notify(waiting[i]);
-        }
-    }
-    function notify(listener){
-        var func = (isError ? listener.error : listener.resolved);
-        if(func){
-            handled = true;
-            enqueue(function(){
-                if(currentContextHandler){
-                    currentContextHandler.resume();
-                }
-                try{
-                    var newResult = func(result);
-                    if(newResult && typeof newResult.then === "function"){
-                        newResult.then(listener.deferred.resolve, listener.deferred.reject);
-                        return;
-                    }
-                    listener.deferred.resolve(newResult);
-                }
-                catch(e){
-                    // console.error("promise caught exception ", e);
-                    // console.log(printStackTrace({e: e}));
-                    listener.deferred.reject(e);
-                }
-                finally{
-                    if(currentContextHandler){
-                        currentContextHandler.suspend();
-                    }
-                }
-            });
-        }
-        else{
-            listener.deferred[isError ? "reject" : "resolve"](result);
-        }
-    }
-    // calling resolve will resolve the promise
-    this.resolve = this.callback = this.emitSuccess = function(value){
-        notifyAll(value);
-    };
-
-    var reject = function(error){
-        isError = true;
-        notifyAll(error);
-    };
-
-    // calling error will indicate that the promise failed
-    this.reject = this.errback = this.emitError = rejectImmediately ? reject : function(error){
-        return enqueue(function(){
-            reject(error);
-        });
-    };
-    // call progress to provide updates on the progress on the completion of the promise
-    this.progress = function(update){
-        for(var i = 0; i < waiting.length; i++){
-            var progress = waiting[i].progress;
-            progress && progress(update);
-        }
-    };
-    // provide the implementation of the promise
-    this.then = promise.then = function(resolvedCallback, errorCallback, progressCallback){
-        var returnDeferred = new Deferred(promise.cancel, true);
-        var listener = {resolved: resolvedCallback, error: errorCallback, progress: progressCallback, deferred: returnDeferred};
-        if(finished){
-            notify(listener);
-        }
-        else{
-            waiting.push(listener);
-        }
-        return returnDeferred.promise;
-    };
-
-    if(canceller){
-        this.cancel = promise.cancel = function(){
-            var error = canceller();
-            if(!(error instanceof Error)){
-                error = new Error(error);
-            }
-            reject(error);
-        };
-    }
-
-    // provide a function to optimize synchronous actions
-    this.valueIfResolved = function() {
-        return finished ? result : null;
-    };
+    // Debugging help
+    this._id = _nextId++;
+    //this._createTrace = new Trace(new Error());
+    exports._outstanding[this._id] = this;
 };
 
-function perform(value, async, sync){
-    try{
-        if(value && typeof value.then === "function"){
-            value = async(value);
-        }
-        else{
-            value = sync(value);
-        }
-        if(value && typeof value.then === "function"){
-            return value;
-        }
-        var deferred = new Deferred();
-        deferred.resolve(value);
-        return deferred.promise;
-    }catch(e){
-        console.error("promise caught exception: ", e);
-        console.log(printStackTrace({e: e}));
-        var deferred = new Deferred();
-        deferred.reject(e);
-        return deferred.promise;
+/**
+ * Yeay for RTTI.
+ */
+exports.Promise.prototype.isPromise = true;
+
+/**
+ * Take the specified action of fulfillment of a promise, and (optionally)
+ * a different action on promise rejection.
+ */
+exports.Promise.prototype.then = function(onSuccess, onError) {
+    if (onSuccess !== null && onSuccess !== undefined) {
+        this._onSuccessHandlers.push(onSuccess);
+    }
+    if (onError !== null && onError !== undefined) {
+        this._onErrorHandlers.push(onError);
     }
 
-}
-/**
- * Promise manager to make it easier to consume promises
- */
+    if (this._status !== PENDING) {
+        this._callHandlers();
+    }
+
+    return this;
+};
 
 /**
- * Registers an observer on a promise.
- * @param value     promise or value to observe
- * @param resolvedCallback function to be called with the resolved value
- * @param rejectCallback  function to be called with the rejection reason
- * @param progressCallback  function to be called when progress is made
- * @return promise for the return value from the invoked callback
+ * Like then() except that rather than returning <tt>this</tt> we return
+ * a promise which
  */
-exports.whenPromise = function(value, resolvedCallback, rejectCallback, progressCallback){
-    return perform(value, function(value){
-        return value.then(resolvedCallback, rejectCallback, progressCallback);
-    },
-    function(value){
-        return resolvedCallback(value);
+exports.Promise.prototype.chainPromise = function(onSuccess) {
+    var chain = new exports.Promise();
+    chain._chainedFrom = this;
+    this.then(function(data) {
+        try {
+            chain.resolve(onSuccess(data));
+        } catch (ex) {
+            chain.reject(ex);
+        }
+    }, function(ex) {
+        chain.reject(ex);
     });
+    return chain;
 };
+
 /**
- * Registers an observer on a promise.
- * @param value     promise or value to observe
- * @param resolvedCallback function to be called with the resolved value
- * @param rejectCallback  function to be called with the rejection reason
- * @param progressCallback  function to be called when progress is made
- * @return promise for the return value from the invoked callback or the value if it
- * is a non-promise value
+ * Supply the fulfillment of a promise
  */
-exports.when = function(value, resolvedCallback, rejectCallback, progressCallback){
-    if(value && typeof value.then === "function"){
-        return exports.whenPromise(value, resolvedCallback, rejectCallback, progressCallback);
+exports.Promise.prototype.resolve = function(data) {
+    if (this._status != PENDING) {
+        console.groupCollapsed('Promise already closed');
+        console.error('Attempted resolve() with ', data);
+        console.error('Previous status = ', this._status, ', previous value = ', this._value);
+        console.trace();
+        console.groupEnd();
     }
-    return resolvedCallback(value);
+    this._status = SUCCESS;
+    this._value = data;
+    this._callHandlers();
+
+    //this._completeTrace = new Trace(new Error());
+    complete(this);
+    return this;
 };
 
 /**
- * Gets the value of a property in a future turn.
- * @param target    promise or value for target object
- * @param property      name of property to get
- * @return promise for the property value
+ * Renege on a promise
  */
-exports.get = function(target, property){
-    return perform(target, function(target){
-        return target.get(property);
-    },
-    function(target){
-        return target[property]
-    });
-};
-
-/**
- * Invokes a method in a future turn.
- * @param target    promise or value for target object
- * @param methodName      name of method to invoke
- * @param args      array of invocation arguments
- * @return promise for the return value
- */
-exports.post = function(target, methodName, args){
-    return perform(target, function(target){
-        return target.call(property, args);
-    },
-    function(target){
-        return target[methodName].apply(target, args);
-    });
-};
-
-/**
- * Sets the value of a property in a future turn.
- * @param target    promise or value for target object
- * @param property      name of property to set
- * @param value     new value of property
- * @return promise for the return value
- */
-exports.put = function(target, property, value){
-    return perform(target, function(target){
-        return target.put(property, value);
-    },
-    function(target){
-        return target[property] = value;
-    });
-};
-
-
-/**
- * Waits for the given promise to finish, blocking (and executing other events)
- * if necessary to wait for the promise to finish. If target is not a promise
- * it will return the target immediately. If the promise results in an reject,
- * that reject will be thrown.
- * @param target   promise or value to wait for.
- * @return the value of the promise;
- */
-exports.wait = function(target){
-    if(!queue){
-        throw new Error("Can not wait, the event-queue module is not available");
+exports.Promise.prototype.reject = function(error) {
+    if (this._status != PENDING) {
+        console.group('Promise already closed');
+        console.error('Attempted reject() with ', error);
+        console.error('Previous status = ', this._status, ', previous value = ', this._value);
+        console.trace();
+        console.groupEnd();
     }
-    if(target && typeof target.then === "function"){
-        var isFinished, isError, result;
-        target.then(function(value){
-            isFinished = true;
-            result = value;
-        },
-        function(error){
-            isFinished = true;
-            isError = true;
-            result = error;
-        });
-        while(!isFinished){
-            queue.processNextEvent(true);
-        }
-        if(isError){
-            throw result;
-        }
-        return result;
-    }
-    else{
-        return target;
-    }
+    this._status = ERROR;
+    this._value = error;
+    this._callHandlers();
+
+    //this._completeTrace = new Trace(new Error());
+    complete(this);
+    return this;
 };
 
 /**
- * Takes an array of promises and returns a promise that that is fulfilled once all
- * the promises in the array are fulfilled
- * @param group  The array of promises
+ * Internal method to be called whenever we have handlers to call.
+ * @private
+ */
+exports.Promise.prototype._callHandlers = function() {
+    if (this._status === PENDING) {
+        throw new Error('call handlers in pending');
+    }
+    var list = (this._status === SUCCESS) ?
+        this._onSuccessHandlers :
+        this._onErrorHandlers;
+
+    list.forEach(function(handler) {
+        handler.call(null, this._value);
+    }, this);
+
+    this._onSuccessHandlers.length = 0;
+    this._onErrorHandlers.length = 0;
+};
+
+
+/**
+ * Takes an array of promises and returns a promise that that is fulfilled once
+ * all the promises in the array are fulfilled
+ * @param group The array of promises
  * @return the promise that is fulfilled when all the array is fulfilled
  */
-exports.group = function(group){
-    var deferred = defer();
-    if(!(group instanceof Array)){
-        group = Array.prototype.slice.call(arguments);
-    }
-    var fulfilled = 0;
-    var length = group.length;
-
-    // if the original array has nothing in it, we can just
-    // return now.
-    if (!length) {
-        deferred.resolve([]);
-        return deferred.promise;
+exports.group = function(promiseList) {
+    if (!(promiseList instanceof Array)) {
+        promiseList = Array.prototype.slice.call(arguments);
     }
 
+    // If the original array has nothing in it, return now to avoid waiting
+    if (promiseList.length === 0) {
+        return new exports.Promise().resolve([]);
+    }
+
+    var promise = new exports.Promise();
     var results = [];
-    group.forEach(function(promise, index){
-        exports.when(promise, function(value){
-            results[index] = value;
+    var fulfilled = 0;
+
+    var onSuccessFactory = function(index) {
+        return function(data) {
+            results[index] = data;
             fulfilled++;
-            if(fulfilled === length){
-                deferred.resolve(results);
+            if (fulfilled === promiseList.length) {
+                promise.resolve(results);
             }
-        },
-        deferred.reject);
+        };
+    };
+
+    promiseList.forEach(function(promise, index) {
+        promise.then(onSuccessFactory(index), promise.reject);
     });
-    return deferred.promise;
+
+    return promise;
 };
 
 });
@@ -57901,9 +57917,124 @@ exports.formatDate = function (date) {
  */
 exports.formatDate.shortMonths = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
 
-});
+/**
+ * Retrieves the list of keys on an object.
+ */
+exports.objectKeys = Object.keys;
+if (!exports.objectKeys) {
+    exports.objectKeys = function(obj) {
+        var k, ret = [];
+        for (k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                ret.push(k);
+            }
+        }
+        return ret;
+    };
+}
 
-tiki.module("bespin:index",function(require,exports,module){});
+});
+;tiki.register("delegate_support",{});
+tiki.module("delegate_support:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+"define metadata";
+({
+    "description": "Simple support for multiple delegates on an object"
+});
+"end";
+
+var SC = require('sproutcore/runtime').SC;
+
+/**
+ * @namespace
+ *
+ * This mixin provides support for delegate objects. It's similar to
+ * SC.DelegateSupport but is simpler and allows multiple delegates.
+ */
+exports.MultiDelegateSupport = {
+    /**
+     * @property{Array}
+     *
+     * The set of delegates.
+     */
+    delegates: [],
+
+    /**
+     * Adds a delegate to the list of delegates.
+     */
+    addDelegate: function(delegate) {
+        this.set('delegates', this.get('delegates').concat(delegate));
+    },
+
+    /**
+     * @protected
+     *
+     * For each delegate that implements the given method, calls it, passing
+     * this object as the first parameter along with any other parameters
+     * specified.
+     */
+    notifyDelegates: function(method) {
+        var args = [ this ];
+        for (var i = 1; i < arguments.length; i++) {
+            args.push(arguments[i]);
+        }
+
+        this.get('delegates').forEach(function(delegate) {
+            if (delegate.respondsTo(method)) {
+                delegate[method].apply(delegate, args);
+            }
+        });
+    },
+
+    /**
+     * Removes a delegate from the list of delegates.
+     */
+    removeDelegate: function(oldDelegate) {
+        var delegates = this.get('delegates');
+        this.set('delegates', delegates.filter(function(delegate) {
+            return delegate !== oldDelegate;
+        }));
+    }
+};
+
+
+});
 ;tiki.register("types",{});
 tiki.module("types:basic",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
@@ -57914,7 +58045,7 @@ tiki.module("types:basic",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -57962,7 +58093,7 @@ var r = require;
  */
 exports.text = {
     isValid: function(value, typeExt) {
-        return typeof value == "string";
+        return typeof value == 'string';
     },
 
     toString: function(value, typeExt) {
@@ -57991,14 +58122,14 @@ exports.number = {
         if (value === Infinity) {
             return false;
         }
-        return typeof value == "number";// && !isNaN(value);
+        return typeof value == 'number';// && !isNaN(value);
     },
 
     toString: function(value, typeExt) {
         if (!value) {
             return null;
         }
-        return "" + value;
+        return '' + value;
     },
 
     fromString: function(value, typeExt) {
@@ -58007,7 +58138,7 @@ exports.number = {
         }
         var reply = parseInt(value, 10);
         if (isNaN(reply)) {
-            throw new Error("Can't convert '" + value + "' to a number.");
+            throw new Error('Can\'t convert "' + value + '" to a number.');
         }
         return reply;
     }
@@ -58018,26 +58149,26 @@ exports.number = {
  */
 exports.bool = {
     isValid: function(value, typeExt) {
-        return typeof value == "boolean";
+        return typeof value == 'boolean';
     },
 
     toString: function(value, typeExt) {
-        return "" + value;
+        return '' + value;
     },
 
     fromString: function(value, typeExt) {
         if (value === null) {
             return null;
         }
-        
+
         if (!value.toLowerCase) {
             return !!value;
         }
-        
+
         var lower = value.toLowerCase();
-        if (lower == "true") {
+        if (lower == 'true') {
             return true;
-        } else if (lower == "false") {
+        } else if (lower == 'false') {
             return false;
         }
 
@@ -58051,7 +58182,7 @@ exports.bool = {
  */
 exports.object = {
     isValid: function(value, typeExt) {
-        return typeof value == "object";
+        return typeof value == 'object';
     },
 
     toString: function(value, typeExt) {
@@ -58068,12 +58199,12 @@ exports.object = {
  */
 exports.selection = {
     isValid: function(value, typeExt) {
-        if (typeof value != "string") {
+        if (typeof value != 'string') {
             return false;
         }
 
         if (!typeExt.data) {
-            console.error("Missing data on selection type extension. Skipping");
+            console.error('Missing data on selection type extension. Skipping');
             return true;
         }
 
@@ -58106,7 +58237,7 @@ exports.selection = {
         } else if (typeSpec.pointer) {
             catalog.loadObjectForPropertyPath(typeSpec.pointer).then(function(obj) {
                 var reply = obj(typeSpec);
-                if (typeof reply.then === "function") {
+                if (typeof reply.then === 'function') {
                     reply.then(function(data) {
                         extension.data = data;
                         promise.resolve();
@@ -58120,7 +58251,7 @@ exports.selection = {
             });
         } else {
             // No extra data available
-            console.warn("Missing data/pointer for selection", typeSpec);
+            console.warn('Missing data/pointer for selection', typeSpec);
             promise.resolve();
         }
 
@@ -58139,7 +58270,7 @@ tiki.module("types:types",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -58383,7 +58514,7 @@ tiki.module("settings:commands",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -58412,9 +58543,9 @@ tiki.module("settings:commands",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-var catalog = require("bespin:plugins").catalog;
+var catalog = require('bespin:plugins').catalog;
 
-var settings = require("settings").settings;
+var settings = require('settings').settings;
 
 /**
  * 'set' command
@@ -58424,7 +58555,7 @@ exports.setCommand = function(env, args, request) {
 
     if (!args.setting) {
         var settingsList = settings._list();
-        html = "";
+        html = '';
         // first sort the settingsList based on the key
         settingsList.sort(function(a, b) {
             if (a.key < b.key) {
@@ -58437,21 +58568,21 @@ exports.setCommand = function(env, args, request) {
         });
 
         settingsList.forEach(function(setting) {
-            html += "<a class='setting' href='https://wiki.mozilla.org/Labs/Bespin/Settings#" +
+            html += '<a class="setting" href="https://wiki.mozilla.org/Labs/Bespin/Settings#' +
                     setting.key +
-                    "' title='View external documentation on setting: " +
+                    '" title="View external documentation on setting: ' +
                     setting.key +
-                    "' target='_blank'>" +
+                    '" target="_blank">' +
                     setting.key +
-                    "</a> = " +
+                    '</a> = ' +
                     setting.value +
-                    "<br/>";
+                    '<br/>';
         });
     } else {
         if (args.value === undefined) {
-            html = "<strong>" + args.setting + "</strong> = " + settings.get(args.setting);
+            html = '<strong>' + args.setting + '</strong> = ' + settings.get(args.setting);
         } else {
-            html = "Setting: <strong>" + args.setting + "</strong> = " + args.value;
+            html = 'Setting: <strong>' + args.setting + '</strong> = ' + args.value;
             settings.set(args.setting, args.value);
         }
     }
@@ -58464,7 +58595,7 @@ exports.setCommand = function(env, args, request) {
  */
 exports.unsetCommand = function(env, args, request) {
     settings.resetValue(args.setting);
-    request.done("Reset " + args.setting + " to default: " + settings.get(args.setting));
+    request.done('Reset ' + args.setting + ' to default: ' + settings.get(args.setting));
 };
 
 });
@@ -58478,7 +58609,7 @@ tiki.module("settings:cookie",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -58507,7 +58638,7 @@ tiki.module("settings:cookie",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-var cookie = require("bespin:util/cookie");
+var cookie = require('bespin:util/cookie');
 
 /**
  * Save the settings in a cookie
@@ -58518,7 +58649,7 @@ exports.CookiePersister = SC.Object.create({
 
     loadInitialValues: function(settings) {
         settings._loadDefaultValues().then(function() {
-            var data = cookie.get("settings");
+            var data = cookie.get('settings');
             settings._loadFromObject(JSON.parse(data));
         }.bind(this));
     },
@@ -58532,9 +58663,9 @@ exports.CookiePersister = SC.Object.create({
             });
 
             var stringData = JSON.stringify(data);
-            cookie.set("settings", stringData);
+            cookie.set('settings', stringData);
         } catch (ex) {
-            console.error("Unable to JSONify the settings! " + ex);
+            console.error('Unable to JSONify the settings! ' + ex);
             return;
         }
     }
@@ -58551,7 +58682,7 @@ tiki.module("settings:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -58619,13 +58750,13 @@ tiki.module("settings:index",function(require,exports,module) {
  * dependency on settings, and increase it on the system with a setting.
  * e.g. Now:
  * <pre>
- * setting.addSetting({ name:"foo", ... });
- * settings.set("foo", "bar");
+ * setting.addSetting({ name:'foo', ... });
+ * settings.set('foo', 'bar');
  * </pre>
  * <p>Vs the potentially better:
  * <pre>
- * var foo = setting.addSetting({ name:"foo", ... });
- * foo.value = "bar";
+ * var foo = setting.addSetting({ name:'foo', ... });
+ * foo.value = 'bar';
  * </pre>
  * <p>Comparison:
  * <ul>
@@ -58639,7 +58770,8 @@ tiki.module("settings:index",function(require,exports,module) {
  * </ul>
  */
 
-var MemorySettings = require("memory").MemorySettings;
+var catalog = require('bespin:plugins');
+var MemorySettings = require('memory').MemorySettings;
 
 exports.settings = MemorySettings.create();
 
@@ -58654,7 +58786,7 @@ tiki.module("settings:memory",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -58683,28 +58815,28 @@ tiki.module("settings:memory",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-var catalog = require("bespin:plugins").catalog;
+var catalog = require('bespin:plugins').catalog;
 var console = require('bespin:console').console;
-var Promise = require("bespin:promise").Promise;
-var groupPromises = require("bespin:promise").group;
+var Promise = require('bespin:promise').Promise;
+var groupPromises = require('bespin:promise').group;
 
-var SC = require("sproutcore/runtime").SC;
+var SC = require('sproutcore/runtime').SC;
 
-var types = require("types:types");
+var types = require('types:types');
 
 /**
  * Find and configure the settings object.
  * @see MemorySettings.addSetting()
  */
 exports.addSetting = function(settingExt) {
-    require("settings").settings.addSetting(settingExt);
+    require('settings').settings.addSetting(settingExt);
 };
 
 /**
  * Fetch an array of the currently known settings
  */
 exports.getSettings = function() {
-    return catalog.getExtensions("setting");
+    return catalog.getExtensions('setting');
 };
 
 /**
@@ -58713,21 +58845,21 @@ exports.getSettings = function() {
  */
 exports.getTypeSpecFromAssignment = function(typeSpec) {
     var assignments = typeSpec.assignments;
-    var replacement = "text";
+    var replacement = 'text';
 
     if (assignments) {
-        // Find the assignment for "setting" so we can get it's value
+        // Find the assignment for 'setting' so we can get it's value
         var settingAssignment = null;
         assignments.forEach(function(assignment) {
-            if (assignment.param.name === "setting") {
+            if (assignment.param.name === 'setting') {
                 settingAssignment = assignment;
             }
         });
 
         if (settingAssignment) {
             var settingName = settingAssignment.value;
-            if (settingName && settingName !== "") {
-                var settingExt = catalog.getExtensionByKey("setting", settingName);
+            if (settingName && settingName !== '') {
+                var settingExt = catalog.getExtensionByKey('setting', settingName);
                 if (settingExt) {
                     replacement = settingExt.type;
                 }
@@ -58744,15 +58876,15 @@ exports.getTypeSpecFromAssignment = function(typeSpec) {
  * <pre>
  * // Create manually, or require 'settings' from the container.
  * // This is the manual version:
- * var settings = require("bespin:plugins").catalog.getObject("settings");
+ * var settings = require('bespin:plugins').catalog.getObject('settings');
  * // Add a new setting
- * settings.addSetting({ name:"foo", ... });
+ * settings.addSetting({ name:'foo', ... });
  * // Display the default value
- * alert(settings.get("foo"));
+ * alert(settings.get('foo'));
  * // Alter the value, which also publishes the change etc.
- * settings.set("foo", "bar");
+ * settings.set('foo', 'bar');
  * // Reset the value to the default
- * settings.resetValue("foo");
+ * settings.resetValue('foo');
  * </pre>
  * @class
  */
@@ -58774,12 +58906,17 @@ exports.MemorySettings = SC.Object.extend({
      * validation.
      */
     set: function(key, value) {
-        var settingExt = catalog.getExtensionByKey("setting", key);
+        var settingExt = catalog.getExtensionByKey('setting', key);
         if (!settingExt) {
-            throw new Error("Unknown setting: ", key, value);
+            // If there is no definition for this setting, then warn the user
+            // and store the setting in raw format. If the setting gets defined,
+            // the addSetting() function is called which then takes up the
+            // here stored setting and calls set() to conver the setting.
+            console.warn('Setting not defined: ', key, value);
+            return this.superclass('__deactivated__' + key, value);
         }
 
-        if (typeof value == "string" && settingExt.type == "string") {
+        if (typeof value == 'string' && settingExt.type == 'string') {
             // no conversion needed
             return this.superclass(key, value);
         } else {
@@ -58795,11 +58932,11 @@ exports.MemorySettings = SC.Object.extend({
                 inline = true;
                 superSet.apply(this, [ key, converted ]);
             }.bind(this), function(ex) {
-                console.error("Error setting", key, ": ", ex);
+                console.error('Error setting', key, ': ', ex);
             });
 
             if (!inline) {
-                console.warn("About to set string version of ", key, "delaying typed set.");
+                console.warn('About to set string version of ', key, 'delaying typed set.');
                 this.superclass(key, value);
             }
         }
@@ -58811,10 +58948,10 @@ exports.MemorySettings = SC.Object.extend({
      * Function to add to the list of available settings.
      * <p>Example usage:
      * <pre>
-     * var settings = require("bespin:plugins").catalog.getObject("settings");
+     * var settings = require('bespin:plugins').catalog.getObject('settings');
      * settings.addSetting({
-     *     name: "tabsize", // For use in settings.get("X")
-     *     type: "number",  // To allow value checking.
+     *     name: 'tabsize', // For use in settings.get('X')
+     *     type: 'number',  // To allow value checking.
      *     defaultValue: 4  // Default value for use when none is directly set
      * });
      * </pre>
@@ -58822,21 +58959,28 @@ exports.MemorySettings = SC.Object.extend({
      */
     addSetting: function(settingExt) {
         if (!settingExt.name) {
-            console.error("Setting.name == undefined. Ignoring.", settingExt);
+            console.error('Setting.name == undefined. Ignoring.', settingExt);
             return;
         }
 
         if (!settingExt.defaultValue === undefined) {
-            console.error("Setting.defaultValue == undefined", settingExt);
+            console.error('Setting.defaultValue == undefined', settingExt);
         }
 
         types.isValid(settingExt.defaultValue, settingExt.type).then(function(valid) {
             if (!valid) {
-                console.warn("!Setting.isValid(Setting.defaultValue)", settingExt);
+                console.warn('!Setting.isValid(Setting.defaultValue)', settingExt);
             }
 
+            // The value can be
+            // 1) the value of a setting that is not activated at the moment
+            //       OR
+            // 2) the defaultValue of the setting.
+            var value = (this.get('__deactivated__' + settingExt.name) ||
+                                                        settingExt.defaultValue);
+
             // Set the default value up.
-            this.set(settingExt.name, settingExt.defaultValue);
+            this.set(settingExt.name, value);
 
             // Add a setter to this so subclasses can save
             this.addObserver(settingExt.name, this, function() {
@@ -58844,7 +58988,7 @@ exports.MemorySettings = SC.Object.extend({
             }.bind(this));
 
         }.bind(this), function(ex) {
-            console.error("Type error ", ex, " ignoring setting ", settingExt);
+            console.error('Type error ', ex, ' ignoring setting ', settingExt);
         });
     },
 
@@ -58852,12 +58996,18 @@ exports.MemorySettings = SC.Object.extend({
      * Reset the value of the <code>key</code> setting to it's default
      */
     resetValue: function(key) {
-        var settingExt = catalog.getExtensionByKey("setting", key);
+        var settingExt = catalog.getExtensionByKey('setting', key);
         if (settingExt) {
             this.set(key, settingExt.defaultValue);
         } else {
-            console.log("ignore resetValue on ", key);
+            console.log('ignore resetValue on ', key);
         }
+    },
+
+    resetAll: function() {
+        this._getSettingNames().forEach(function(key) {
+            this.resetValue(key);
+        }.bind(this));
     },
 
     /**
@@ -58865,7 +59015,7 @@ exports.MemorySettings = SC.Object.extend({
      */
     _getSettingNames: function() {
         var typeNames = [];
-        catalog.getExtensions("setting").forEach(function(settingExt) {
+        catalog.getExtensions('setting').forEach(function(settingExt) {
             typeNames.push(settingExt.name);
         });
         return typeNames;
@@ -58930,7 +59080,7 @@ exports.MemorySettings = SC.Object.extend({
         for (var key in data) {
             if (data.hasOwnProperty(key)) {
                 var valueStr = data[key];
-                var settingExt = catalog.getExtensionByKey("setting", key);
+                var settingExt = catalog.getExtensionByKey('setting', key);
                 if (settingExt) {
                     // TODO: We shouldn't just ignore values without a setting
                     var promise = types.fromString(valueStr, settingExt.type);
@@ -58961,7 +59111,7 @@ exports.MemorySettings = SC.Object.extend({
 
         this._getSettingNames().forEach(function(key) {
             var value = this.get(key);
-            var settingExt = catalog.getExtensionByKey("setting", key);
+            var settingExt = catalog.getExtensionByKey('setting', key);
             if (settingExt) {
                 // TODO: We shouldn't just ignore values without a setting
                 var promise = types.toString(value, settingExt.type);
@@ -58984,7 +59134,7 @@ exports.MemorySettings = SC.Object.extend({
      */
     _defaultValues: function() {
         var defaultValues = {};
-        catalog.getExtensions("setting").forEach(function(settingExt) {
+        catalog.getExtensions('setting').forEach(function(settingExt) {
             defaultValues[settingExt.name] = settingExt.defaultValue;
         });
         return defaultValues;
@@ -58992,158 +59142,621 @@ exports.MemorySettings = SC.Object.extend({
 });
 
 });
-;tiki.register("canon",{});
-tiki.module("canon:environment",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is
- * Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+;tiki.register("traits",{});
+tiki.module("traits:index",function(require,exports,module) {
+// Copyright (C) 2010 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-var SC = require("sproutcore/runtime").SC;
-var catalog = require("bespin:plugins").catalog;
-var console = require('bespin:console').console;
+// See http://code.google.com/p/es-lab/wiki/Traits
+// for background on traits and a description of this library
 
-/**
- * The environment plays a similar role to the environment under unix.
- * Bespin does not currently have a concept of variables, (i.e. things the user
- * directly changes, however it does have a number of pre-defined things that
- * are changed by the system.
- * <p>The role of the Environment is likely to be expanded over time.
- */
-exports.Environment = SC.Object.extend({
-    /**
-     * Retrieves the EditSession
-     */
-    session: function() {
-        return catalog.getObject("session");
-    }.property(),
+"define metadata";
+({
+    "description": "Traits library, traitsjs.org",
+    "dependencies": {},
+    "provides": []
+});
+"end";
 
-    /**
-     * Gets the currentView from the session.
-     */
-    view: function() {
-        var session = this.get("session");
-        if (!session) {
-            // This can happen if the session is being reloaded.
-            return null;
+// --- Begin traits-0.1.js ---
+
+exports.Trait = (function(){
+
+  // == Ancillary functions ==
+  
+  // this signals that the current ES implementation supports properties,
+  // so probably also accessor properties
+  var SUPPORTS_DEFINEPROP = !!Object.defineProperty;
+
+  var call = Function.prototype.call;
+
+  /**
+   * An ad hoc version of bind that only binds the 'this' parameter.
+   */
+  var bindThis = Function.prototype.bind
+    ? function(fun, self) { return Function.prototype.bind.call(fun, self); }
+    : function(fun, self) {
+        function funcBound(var_args) {
+          return fun.apply(self, arguments);
         }
-        return session.get("currentView");
-    }.property(),
+        return funcBound;
+      };
 
-    /**
-     * The current editor model might not always be easy to find so you should
-     * use <code>instruction.get("model")</code> to access the view where
-     * possible.
-     */
-    model: function() {
-        var session = this.get("session");
-        if (!session) {
-            console.error("command attempted to get model but there's no session");
-            return undefined;
-        }
-        var buffer = session.get("currentBuffer");
-        if (!buffer) {
-            console.error("Session has no current buffer");
-            return undefined;
-        }
-        return buffer.get("model");
-    }.property(),
-
-    /**
-     * Returns the currently-active syntax contexts.
-     */
-    contexts: function() {
-        var textView = this.get('view');
-        
-        // when editorapp is being refreshed, the textView is not available.
-        if (!textView) {
-            return [];
-        }
-        
-        var syntaxManager = textView.getPath('layoutManager.syntaxManager');
-        var pos = textView.getSelectedRange().start;
-        return syntaxManager.contextsAtPosition(pos);
-    }.property(),
+  var hasOwnProperty = bindThis(call, Object.prototype.hasOwnProperty);
+  var slice = bindThis(call, Array.prototype.slice);
     
-    /**
-     * gets the current file from the session
-     */
-    file: function() {
-        var session = this.get("session");
-        if (!session) {
-            console.error("command attempted to get file but there's no session");
-            return undefined;
+  // feature testing such that traits.js runs on both ES3 and ES5
+  var forEach = Array.prototype.forEach
+      ? bindThis(call, Array.prototype.forEach)
+      : function(arr, fun) {
+          for (var i = 0, len = arr.length; i < len; i++) { fun(arr[i]); }
+        };
+      
+  var freeze = Object.freeze || function(obj) { return obj; };
+  var getPrototypeOf = Object.getPrototypeOf || function(obj) { return Object.prototype };
+  var getOwnPropertyNames = Object.getOwnPropertyNames ||
+      function(obj) {
+        var props = [];
+        for (var p in obj) { if (hasOwnProperty(obj,p)) { props.push(p); } }
+        return props;
+      };
+  var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor ||
+      function(obj, name) {
+        return {
+          value: obj[name],
+          enumerable: true,
+          writable: true,
+          configurable: true
+        };
+      };
+  var defineProperty = Object.defineProperty ||
+      function(obj, name, pd) {
+        obj[name] = pd.value;
+      };
+  var defineProperties = Object.defineProperties ||
+      function(obj, propMap) {
+        for (var name in propMap) {
+          if (hasOwnProperty(propMap, name)) {
+            defineProperty(obj, name, propMap[name]);
+          }
         }
-        var buffer = session.get("currentBuffer");
-        if (!buffer) {
-            console.error("Session has no current buffer");
-            return undefined;
+      };
+  var Object_create = Object.create ||
+      function(proto, propMap) {
+        var self;
+        function dummy() {};
+        dummy.prototype = proto || Object.prototype;
+        self = new dummy();
+        if (propMap) {
+          defineProperties(self, propMap);          
         }
-        return buffer.get("file");
-    }.property(),
+        return self;
+      };
+  var getOwnProperties = Object.getOwnProperties ||
+      function(obj) {
+        var map = {};
+        forEach(getOwnPropertyNames(obj), function (name) {
+          map[name] = getOwnPropertyDescriptor(obj, name);
+        });
+        return map;
+      };
+  
+  // end of ES3 - ES5 compatibility functions
+  
+  function makeConflictAccessor(name) {
+    var accessor = function(var_args) {
+      throw new Error("Conflicting property: "+name);
+    };
+    freeze(accessor.prototype);
+    return freeze(accessor);
+  };
 
-    /**
-     * The current Buffer from the session
-     */
-    buffer: function() {
-        var session = this.get("session");
-        if (!session) {
-            console.error("command attempted to get buffer but there's no session");
-            return undefined;
-        }
-        return session.get("currentBuffer");
-    }.property(),
+  function makeRequiredPropDesc(name) {
+    return freeze({
+      value: undefined,
+      enumerable: false,
+      required: true
+    });
+  }
+  
+  function makeConflictingPropDesc(name) {
+    var conflict = makeConflictAccessor(name);
+    if (SUPPORTS_DEFINEPROP) {
+      return freeze({
+       get: conflict,
+       set: conflict,
+       enumerable: false,
+       conflict: true
+      }); 
+    } else {
+      return freeze({
+        value: conflict,
+        enumerable: false,
+        conflict: true
+      });
+    }
+  }
+  
+  /**
+   * Are x and y not observably distinguishable?
+   */
+  function identical(x, y) {
+    if (x === y) {
+      // 0 === -0, but they are not identical
+      return x !== 0 || 1/x === 1/y;
+    } else {
+      // NaN !== NaN, but they are identical.
+      // NaNs are the only non-reflexive value, i.e., if x !== x,
+      // then x is a NaN.
+      return x !== x && y !== y;
+    }
+  }
 
-    /**
-     * If files are available, this will get them. Perhaps we need some other
-     * mechanism for populating these things from the catalog?
-     */
-    files: function() {
-        return catalog.getObject("files");
-    }.property().cacheable()
+  // Note: isSameDesc should return true if both
+  // desc1 and desc2 represent a 'required' property
+  // (otherwise two composed required properties would be turned into a conflict)
+  function isSameDesc(desc1, desc2) {
+    // for conflicting properties, don't compare values because
+    // the conflicting property values are never equal
+    if (desc1.conflict && desc2.conflict) {
+      return true;
+    } else {
+      return (   desc1.get === desc2.get
+              && desc1.set === desc2.set
+              && identical(desc1.value, desc2.value)
+              && desc1.enumerable === desc2.enumerable
+              && desc1.required === desc2.required
+              && desc1.conflict === desc2.conflict); 
+    }
+  }
+  
+  function freezeAndBind(meth, self) {
+    return freeze(bindThis(meth, self));
+  }
+
+  /* makeSet(['foo', ...]) => { foo: true, ...}
+   *
+   * makeSet returns an object whose own properties represent a set.
+   *
+   * Each string in the names array is added to the set.
+   *
+   * To test whether an element is in the set, perform:
+   *   hasOwnProperty(set, element)
+   */
+  function makeSet(names) {
+    var set = {};
+    forEach(names, function (name) {
+      set[name] = true;
+    });
+    return freeze(set);
+  }
+
+  // == singleton object to be used as the placeholder for a required property ==
+  
+  var required = freeze({ toString: function() { return '<Trait.required>'; } });
+
+  // == The public API methods ==
+
+  /**
+   * var newTrait = trait({ foo:required, ... })
+   *
+   * @param object an object record (in principle an object literal)
+   * @returns a new trait describing all of the own properties of the object
+   *          (both enumerable and non-enumerable)
+   *
+   * As a general rule, 'trait' should be invoked with an
+   * object literal, since the object merely serves as a record
+   * descriptor. Both its identity and its prototype chain are irrelevant.
+   * 
+   * Data properties bound to function objects in the argument will be flagged
+   * as 'method' properties. The prototype of these function objects is frozen.
+   * 
+   * Data properties bound to the 'required' singleton exported by this module
+   * will be marked as 'required' properties.
+   *
+   * The <tt>trait</tt> function is pure if no other code can witness the
+   * side-effects of freezing the prototypes of the methods. If <tt>trait</tt>
+   * is invoked with an object literal whose methods are represented as
+   * in-place anonymous functions, this should normally be the case.
+   */
+  function trait(obj) {
+    var map = {};
+    forEach(getOwnPropertyNames(obj), function (name) {
+      var pd = getOwnPropertyDescriptor(obj, name);
+      if (pd.value === required) {
+        pd = makeRequiredPropDesc(name);
+      } else if (typeof pd.value === 'function') {
+        pd.method = true;
+        if ('prototype' in pd.value) {
+          freeze(pd.value.prototype);
+        }
+      } else {
+        if (pd.get && pd.get.prototype) { freeze(pd.get.prototype); }
+        if (pd.set && pd.set.prototype) { freeze(pd.set.prototype); }
+      }
+      map[name] = pd;
+    });
+    return map;
+  }
+
+  /**
+   * var newTrait = compose(trait_1, trait_2, ..., trait_N)
+   *
+   * @param trait_i a trait object
+   * @returns a new trait containing the combined own properties of
+   *          all the trait_i.
+   * 
+   * If two or more traits have own properties with the same name, the new
+   * trait will contain a 'conflict' property for that name. 'compose' is
+   * a commutative and associative operation, and the order of its
+   * arguments is not significant.
+   *
+   * If 'compose' is invoked with < 2 arguments, then:
+   *   compose(trait_1) returns a trait equivalent to trait_1
+   *   compose() returns an empty trait
+   */
+  function compose(var_args) {
+    var traits = slice(arguments, 0);
+    var newTrait = {};
+    
+    forEach(traits, function (trait) {
+      forEach(getOwnPropertyNames(trait), function (name) {
+        var pd = trait[name];
+        if (hasOwnProperty(newTrait, name) &&
+            !newTrait[name].required) {
+          
+          // a non-required property with the same name was previously defined
+          // this is not a conflict if pd represents a 'required' property itself:
+          if (pd.required) {
+            return; // skip this property, the required property is now present
+          }
+            
+          if (!isSameDesc(newTrait[name], pd)) {
+            // a distinct, non-required property with the same name
+            // was previously defined by another trait => mark as conflicting property
+            newTrait[name] = makeConflictingPropDesc(name); 
+          } // else,
+          // properties are not in conflict if they refer to the same value
+          
+        } else {
+          newTrait[name] = pd;
+        }
+      });
+    });
+    
+    return freeze(newTrait);
+  }
+
+  /* var newTrait = exclude(['name', ...], trait)
+   *
+   * @param names a list of strings denoting property names.
+   * @param trait a trait some properties of which should be excluded.
+   * @returns a new trait with the same own properties as the original trait,
+   *          except that all property names appearing in the first argument
+   *          are replaced by required property descriptors.
+   *
+   * Note: exclude(A, exclude(B,t)) is equivalent to exclude(A U B, t)
+   */
+  function exclude(names, trait) {
+    var exclusions = makeSet(names);
+    var newTrait = {};
+    
+    forEach(getOwnPropertyNames(trait), function (name) {
+      // required properties are not excluded but ignored
+      if (!hasOwnProperty(exclusions, name) || trait[name].required) {
+        newTrait[name] = trait[name];
+      } else {
+        // excluded properties are replaced by required properties
+        newTrait[name] = makeRequiredPropDesc(name);
+      }
+    });
+    
+    return freeze(newTrait);
+  }
+
+  /**
+   * var newTrait = override(trait_1, trait_2, ..., trait_N)
+   *
+   * @returns a new trait with all of the combined properties of the argument traits.
+   *          In contrast to 'compose', 'override' immediately resolves all conflicts
+   *          resulting from this composition by overriding the properties of later
+   *          traits. Trait priority is from left to right. I.e. the properties of the
+   *          leftmost trait are never overridden.
+   *
+   *  override is associative:
+   *    override(t1,t2,t3) is equivalent to override(t1, override(t2, t3)) or
+   *    to override(override(t1, t2), t3)
+   *  override is not commutative: override(t1,t2) is not equivalent to override(t2,t1)
+   *
+   * override() returns an empty trait
+   * override(trait_1) returns a trait equivalent to trait_1
+   */
+  function override(var_args) {
+    var traits = slice(arguments, 0);
+    var newTrait = {};
+    forEach(traits, function (trait) {
+      forEach(getOwnPropertyNames(trait), function (name) {
+        var pd = trait[name];
+        // add this trait's property to the composite trait only if
+        // - the trait does not yet have this property
+        // - or, the trait does have the property, but it's a required property
+        if (!hasOwnProperty(newTrait, name) || newTrait[name].required) {
+          newTrait[name] = pd;
+        }
+      });
+    });
+    return freeze(newTrait);
+  }
+  
+  /**
+   * var newTrait = override(dominantTrait, recessiveTrait)
+   *
+   * @returns a new trait with all of the properties of dominantTrait
+   *          and all of the properties of recessiveTrait not in dominantTrait
+   *
+   * Note: override is associative:
+   *   override(t1, override(t2, t3)) is equivalent to override(override(t1, t2), t3)
+   */
+  /*function override(frontT, backT) {
+    var newTrait = {};
+    // first copy all of backT's properties into newTrait
+    forEach(getOwnPropertyNames(backT), function (name) {
+      newTrait[name] = backT[name];
+    });
+    // now override all these properties with frontT's properties
+    forEach(getOwnPropertyNames(frontT), function (name) {
+      var pd = frontT[name];
+      // frontT's required property does not override the provided property
+      if (!(pd.required && hasOwnProperty(newTrait, name))) {
+        newTrait[name] = pd; 
+      }      
+    });
+    
+    return freeze(newTrait);
+  }*/
+
+  /**
+   * var newTrait = rename(map, trait)
+   *
+   * @param map an object whose own properties serve as a mapping from
+            old names to new names.
+   * @param trait a trait object
+   * @returns a new trait with the same properties as the original trait,
+   *          except that all properties whose name is an own property
+   *          of map will be renamed to map[name], and a 'required' property
+   *          for name will be added instead.
+   *
+   * rename({a: 'b'}, t) eqv compose(exclude(['a'],t),
+   *                                 { a: { required: true },
+   *                                   b: t[a] })
+   *
+   * For each renamed property, a required property is generated.
+   * If the map renames two properties to the same name, a conflict is generated.
+   * If the map renames a property to an existing unrenamed property, a conflict is generated.
+   *
+   * Note: rename(A, rename(B, t)) is equivalent to rename(\n -> A(B(n)), t)
+   * Note: rename({...},exclude([...], t)) is not eqv to exclude([...],rename({...}, t))
+   */
+  function rename(map, trait) {
+    var renamedTrait = {};
+    forEach(getOwnPropertyNames(trait), function (name) {
+      // required props are never renamed
+      if (hasOwnProperty(map, name) && !trait[name].required) {
+        var alias = map[name]; // alias defined in map
+        if (hasOwnProperty(renamedTrait, alias) && !renamedTrait[alias].required) {
+          // could happen if 2 props are mapped to the same alias
+          renamedTrait[alias] = makeConflictingPropDesc(alias);
+        } else {
+          // add the property under an alias
+          renamedTrait[alias] = trait[name];
+        }
+        // add a required property under the original name
+        // but only if a property under the original name does not exist
+        // such a prop could exist if an earlier prop in the trait was previously
+        // aliased to this name
+        if (!hasOwnProperty(renamedTrait, name)) {
+          renamedTrait[name] = makeRequiredPropDesc(name);     
+        }
+      } else { // no alias defined
+        if (hasOwnProperty(renamedTrait, name)) {
+          // could happen if another prop was previously aliased to name
+          if (!trait[name].required) {
+            renamedTrait[name] = makeConflictingPropDesc(name);            
+          }
+          // else required property overridden by a previously aliased property
+          // and otherwise ignored
+        } else {
+          renamedTrait[name] = trait[name];
+        }
+      }
+    });
+    
+    return freeze(renamedTrait);
+  }
+  
+  /**
+   * var newTrait = resolve({ oldName: 'newName', excludeName: undefined, ... }, trait)
+   *
+   * This is a convenience function combining renaming and exclusion. It can be implemented
+   * as <tt>rename(map, exclude(exclusions, trait))</tt> where map is the subset of
+   * mappings from oldName to newName and exclusions is an array of all the keys that map
+   * to undefined (or another falsy value).
+   *
+   * @param resolutions an object whose own properties serve as a mapping from
+            old names to new names, or to undefined if the property should be excluded
+   * @param trait a trait object
+   * @returns a resolved trait with the same own properties as the original trait.
+   *
+   * In a resolved trait, all own properties whose name is an own property
+   * of resolutions will be renamed to resolutions[name] if it is truthy,
+   * or their value is changed into a required property descriptor if
+   * resolutions[name] is falsy.
+   *
+   * Note, it's important to _first_ exclude, _then_ rename, since exclude
+   * and rename are not associative, for example:
+   * rename({a: 'b'}, exclude(['b'], trait({ a:1,b:2 }))) eqv trait({b:1})
+   * exclude(['b'], rename({a: 'b'}, trait({ a:1,b:2 }))) eqv trait({b:Trait.required})
+   *
+   * writing resolve({a:'b', b: undefined},trait({a:1,b:2})) makes it clear that
+   * what is meant is to simply drop the old 'b' and rename 'a' to 'b'
+   */
+  function resolve(resolutions, trait) {
+    var renames = {};
+    var exclusions = [];
+    // preprocess renamed and excluded properties
+    for (var name in resolutions) {
+      if (hasOwnProperty(resolutions, name)) {
+        if (resolutions[name]) { // old name -> new name
+          renames[name] = resolutions[name];
+        } else { // name -> undefined
+          exclusions.push(name);
+        }
+      }
+    }
+    return rename(renames, exclude(exclusions, trait));
+  }
+
+  /**
+   * var obj = create(proto, trait)
+   *
+   * @param proto denotes the prototype of the completed object
+   * @param trait a trait object to be turned into a complete object
+   * @returns an object with all of the properties described by the trait.
+   * @throws 'Missing required property' the trait still contains a required property.
+   * @throws 'Remaining conflicting property' if the trait still contains a conflicting property.
+   *
+   * Trait.create is like Object.create, except that it generates
+   * high-integrity or final objects. In addition to creating a new object
+   * from a trait, it also ensures that:
+   *    - an exception is thrown if 'trait' still contains required properties
+   *    - an exception is thrown if 'trait' still contains conflicting properties
+   *    - the object is and all of its accessor and method properties are frozen
+   *    - the 'this' pseudovariable in all accessors and methods of the object is
+   *      bound to the composed object.
+   *
+   *  Use Object.create instead of Trait.create if you want to create
+   *  abstract or malleable objects. Keep in mind that for such objects:
+   *    - no exception is thrown if 'trait' still contains required properties
+   *      (the properties are simply dropped from the composite object)
+   *    - no exception is thrown if 'trait' still contains conflicting properties
+   *      (these properties remain as conflicting properties in the composite object)
+   *    - neither the object nor its accessor and method properties are frozen
+   *    - the 'this' pseudovariable in all accessors and methods of the object is
+   *      left unbound.
+   */
+  function create(proto, trait) {
+    var self = Object_create(proto);
+    var properties = {};
+  
+    forEach(getOwnPropertyNames(trait), function (name) {
+      var pd = trait[name];
+      // check for remaining 'required' properties
+      // Note: it's OK for the prototype to provide the properties
+      if (pd.required && !(name in proto)) {
+        throw new Error('Missing required property: '+name);
+      } else if (pd.conflict) { // check for remaining conflicting properties
+        throw new Error('Remaining conflicting property: '+name);
+      } else if ('value' in pd) { // data property
+        // freeze all function properties and their prototype
+        if (pd.method) { // the property is meant to be used as a method
+          // bind 'this' in trait method to the composite object
+          properties[name] = {
+            value: freezeAndBind(pd.value, self),
+            enumerable: pd.enumerable,
+            configurable: pd.configurable,
+            writable: pd.writable
+          };
+        } else {
+          properties[name] = pd;
+        }
+      } else { // accessor property
+        properties[name] = {
+          get: pd.get ? freezeAndBind(pd.get, self) : undefined,
+          set: pd.set ? freezeAndBind(pd.set, self) : undefined,
+          enumerable: pd.enumerable,
+          configurable: pd.configurable,
+          writable: pd.writable            
+        };
+      }
+    });
+
+    defineProperties(self, properties);
+    return freeze(self);
+  }
+
+  /** A shorthand for create(Object.prototype, trait({...}), options) */
+  function object(record, options) {
+    return create(Object.prototype, trait(record), options);
+  }
+
+  /**
+   * Tests whether two traits are equivalent. T1 is equivalent to T2 iff
+   * both describe the same set of property names and for all property
+   * names n, T1[n] is equivalent to T2[n]. Two property descriptors are
+   * equivalent if they have the same value, accessors and attributes.
+   *
+   * @return a boolean indicating whether the two argument traits are equivalent.
+   */
+  function eqv(trait1, trait2) {
+    var names1 = getOwnPropertyNames(trait1);
+    var names2 = getOwnPropertyNames(trait2);
+    var name;
+    if (names1.length !== names2.length) {
+      return false;
+    }
+    for (var i = 0; i < names1.length; i++) {
+      name = names1[i];
+      if (!trait2[name] || !isSameDesc(trait1[name], trait2[name])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  // if this code is ran in ES3 without an Object.create function, this
+  // library will define it on Object:
+  if (!Object.create) {
+    Object.create = Object_create;
+  }
+  // ES5 does not by default provide Object.getOwnProperties
+  // if it's not defined, the Traits library defines this utility function on Object
+  if(!Object.getOwnProperties) {
+    Object.getOwnProperties = getOwnProperties;
+  }
+  
+  // expose the public API of this module
+  function Trait(record) {
+    // calling Trait as a function creates a new atomic trait
+    return trait(record);
+  }
+  Trait.required = freeze(required);
+  Trait.compose = freeze(compose);
+  Trait.resolve = freeze(resolve);
+  Trait.override = freeze(override);
+  Trait.create = freeze(create);
+  Trait.eqv = freeze(eqv);
+  Trait.object = freeze(object); // not essential, cf. create + trait
+  return freeze(Trait);
+  
+})();
+
+// --- End traits-0.1.js ---
+
+
 });
-
-/**
- * The global environment.
- * TODO: Check that this is the best way to do this.
- */
-exports.global = exports.Environment.create();
-
-});
-
-tiki.module("canon:keyboard",function(require,exports,module) {
+;tiki.register("appsupport",{});
+tiki.module("appsupport:controllers/bespin",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -59152,7 +59765,7 @@ tiki.module("canon:keyboard",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -59182,638 +59795,414 @@ tiki.module("canon:keyboard",function(require,exports,module) {
  * ***** END LICENSE BLOCK ***** */
 
 var SC = require('sproutcore/runtime').SC;
+var Trait = require('traits').Trait;
+var Promise = require('bespin:promise').Promise;
 
-var catalog = require("bespin:plugins").catalog;
-var console = require('bespin:console').console;
-var settings = require('settings').settings;
+var RegistrationHandler = Trait({
+    attach: Trait.required,
+    detach: function() {}
+});
 
-var Request = require("canon:request").Request;
-var environment = require("canon:environment");
+// We can't use Trait.create() on objects that have SproutCore classes as
+// instance members, because they look like functions and Trait.create() tries
+// to bind them...
+var bespinController;
+bespinController = Object.create(Object.prototype, Trait({
+    // The table of component objects: a map from component names to the
+    // "pointer" values specified in the components' plugin metadata.
+    _components: null,
 
-var Trace = require("bespin:util/stacktrace").Trace;
+    // The order in which components are initialized.
+    _componentOrder: null,
 
-/**
- *
- */
-exports.buildFlags = function(env, flags) {
-    flags.context = env.get('contexts')[0];
-    return flags;
-};
+    // The set of components whose extensions are currently loaded.
+    _loadedComponents: null,
 
-/**
- * The canon, or the repository of commands, contains functions to process
- * events and dispatch command messages to targets.
- * @class
- */
-var KeyboardManager = SC.Object.extend({
-    _customKeymappingCache: {},
+    // The set of components that are currently registered. We have to maintain
+    // this list manually, unfortunately, because the registration handler can
+    // be called multiple times for each plugin before unregistration.
+    _registeredComponents: null,
 
-    /**
-     * Returns character codes for the event.  The first value is the
-     * normalized code string, with any Shift or Ctrl characters added to the
-     * beginning. The second value is the char string by itself.
-     *
-     * TODO: This is almost a carbon copy of a function from SproutCore. The
-     * only change is that "meta" is reported for function keys. This should be
-     * exposed as a public API from SproutCore instead of duplicating their
-     * code.
-     *
-     * @return{Array}
-     */
-    _commandCodes: function() {
-        var orgEvt = this.originalEvent;
-        var allowShift = true;
+    // The index of the component we're waiting on in the component order. If
+    // this value is equal to the number of components, the app is fully
+    // initialized and ready to go.
+    _state: 0,
 
-        var code=this.keyCode, ret=null, key=null, modifiers='', lowercase ;
+    _dockView: null,
+    _editorView: null,
+    _environment: null,
+    _themeManager: null,
+    _username: null,
 
-        // Absent a value for "keyCode" or "which", we can't compute the
-        // command codes. Bail out.
-        if (this.keyCode === 0 && this.which === 0) {
-            return false;
-        }
+    _registrationHandlers: {
+        environment: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(environment) {
+                bespinController._environment = environment;
+                bespinController._componentOrder = environment.componentOrder;
 
-        // handle function keys.
-        if (code) {
-            ret = SC.FUNCTION_KEYS[code] ;
-            if (!ret && (orgEvt.altKey || orgEvt.ctrlKey || orgEvt.metaKey)) {
-                ret = SC.PRINTABLE_KEYS[code];
-                // Don't handle the shift key if the combo is
-                //    (meta_|ctrl_)<number>
-                // This is necessary for the French keyboard. On that keyboard,
-                // you have to hold down the shift key to access the number
-                // characters.
-                if (code > 47 && code < 58) allowShift = orgEvt.altKey;
-            }
+                environment.paneClass = bespinController.paneClass;
 
-            if (ret) {
-               if (orgEvt.altKey) modifiers += 'alt_' ;
-               if (orgEvt.ctrlKey) modifiers += 'ctrl_' ;
-               if (orgEvt.metaKey) modifiers += 'meta_';
-            } else if (orgEvt.ctrlKey || orgEvt.metaKey) {
-                return false;
-            }
-        }
-
-        // otherwise just go get the right key.
-        if (!ret) {
-            code = this.which ;
-            key = ret = String.fromCharCode(code) ;
-            lowercase = ret.toLowerCase() ;
-            if (orgEvt.metaKey) {
-               modifiers = 'meta_' ;
-               ret = lowercase;
-
-            } else ret = null ;
-        }
-
-        if (this.shiftKey && ret && allowShift) modifiers += 'shift_' ;
-
-        if (ret) ret = modifiers + ret ;
-        return [ret, key] ;
-    },
-
-    /**
-     * Searches through the command canon for an event matching the given flags
-     * with a key equivalent matching the given SproutCore event, and, if the
-     * command is found, sends a message to the appropriate target.
-     *
-     * This will get a couple of upgrades in the not-too-distant future:
-     * 1. caching in the Canon for fast lookup based on key
-     * 2. there will be an extra layer in between to allow remapping via
-     *    user preferences and keyboard mapping plugins
-     *
-     * @return True if a matching command was found, false otherwise.
-     */
-    processKeyEvent: function(evt, sender, flags) {
-        //
-        // Use our modified commandCodes function to detect the meta key in
-        // more circumstances than SproutCore alone does.
-        //
-        // TODO: See comment in _commandCodes.
-        //
-
-        var symbolicName = this._commandCodes.call(evt)[0];
-        if (SC.none(symbolicName)) {
-            return false;
-        }
-
-        // TODO: Maybe it should be the job of our caller to do this?
-        exports.buildFlags(environment.global, flags);
-
-        flags.isCommandKey = true;
-        return this._matchCommand(symbolicName, sender, flags);
-    },
-
-    processKeyInput: function(text, sender, flags) {
-        flags.isCommandKey = false;
-        return this._matchCommand(text, sender, flags);
-    },
-
-    _matchCommand: function(symbolicName, sender, flags) {
-        var match = this._findCommandExtension(symbolicName, sender, flags);
-        if (match && match.commandExt !== 'no command') {
-            if (flags.isTextView) {
-                sender.resetKeyBuffers();
-            }
-
-            var commandExt = match.commandExt;
-            commandExt.load(function(command) {
-                var request = Request.create({
-                    command: command,
-                    commandExt: commandExt
+                var promise = new Promise();
+                environment.createPane().then(function(pane) {
+                    bespinController.pane = pane;
+                    promise.resolve();
                 });
 
-                try {
-                    command(environment.global, match.args, request);
-                    return true;
-                } catch (ex) {
-                    // TODO: Some UI?
-                    var trace = new Trace(ex, true);
-                    console.group("Error calling command");
-                    console.log("command=", commandExt);
-                    console.log("args=", match.args);
-                    console.error(ex);
-                    trace.log(3);
-                    console.groupEnd();
-                    return false;
-                }
-            });
-            return true;
-        }
+                return promise;
+            },
 
-        // "no command" is returned if a keyevent is handled but there is no
-        // command executed (for example when switchting the keyboard state).
-        if (match && match.commandExt === "no command") {
-            return true;
-        } else {
-            return false;
+            detach: function() {
+                bespinController.pane = null;
+                bespinController._environment = null;
+            }
+        }), RegistrationHandler)),
+
+        theme_manager: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(themeManager) {
+                bespinController._themeManager = themeManager;
+                themeManager.addPane(bespinController.pane);
+                return themeManager.loadTheme();
+            },
+
+            detach: function() {
+                var themeManager = bespinController._themeManager;
+                _themeManager.removePane(bespinController.pane);
+                bespinController._themeManager = null;
+            }
+        }), RegistrationHandler)),
+
+        login_controller: Trait.create(Object.prototype, Trait.override(Trait({
+            _loginController: null,
+            _loginPane: null,
+            _promise: null,
+
+            attach: function(loginController) {
+                this._loginController = loginController;
+
+                var acceptedEvent = loginController.get('accepted');
+                var loggedOutEvent = loginController.get('loggedOut');
+                acceptedEvent.add(this.loginControllerAcceptedLogin);
+                loggedOutEvent.add(this.loginControllerLoggedOut);
+
+                var page = require('userident').userIdentPage;
+                var loginPane = page.get('mainPane');
+                this._loginPane = loginPane;
+
+                var themeManager = bespinController._themeManager;
+                themeManager.addPane(loginPane);
+
+                var promise = new Promise();
+                this._promise = promise;
+                var showIfNotLoggedIn = loginController.showIfNotLoggedIn;
+                SC.run(showIfNotLoggedIn.bind(loginController));
+                return promise;
+            },
+
+            detach: function() {
+                var themeManager = bespinController._themeManager;
+                themeManager.removePane(this._loginPane);
+
+                var loginController = this._loginController;
+                var loggedOutEvent = loginController.get('loggedOut');
+                var acceptedEvent = loginController.get('accepted');
+                loggedOutEvent.remove(this.loginControllerLoggedOut);
+                acceptedEvent.remove(this.loginControllerAcceptedLogin);
+
+                this._loginPane = null;
+                this._loginController = null;
+            },
+
+            /** Called when a user successfully logs in. */
+            loginControllerAcceptedLogin: function(username) {
+                bespinController._username = username;
+
+                var m_userident = require('userident');
+                m_userident.registerUserPlugins();
+
+                this._promise.resolve();
+                this._promise = null;
+            },
+
+            /** Called when the user logs out. */
+            loginControllerLoggedOut: function() {
+                bespinController._rollback('login_controller');
+                bespinController._username = null;
+
+                var loginController = this._loginController;
+                SC.run(loginController.show.bind(loginController));
+            }
+        }), RegistrationHandler)),
+
+        file_source: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(fileSourceClass) {
+                var filesystemClass = require('filesystem').Filesystem;
+                bespinController.files = filesystemClass.create({
+                    source: fileSourceClass.create()
+                });
+
+                return new Promise().resolve();
+            },
+
+            detach: function(fileSourceClass) {
+                bespinController.files = null;
+            }
+        }), RegistrationHandler)),
+
+        settings: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(settings) {
+                return new Promise().resolve();
+            },
+
+            detach: function() {}
+        }), RegistrationHandler)),
+
+        key_listener: Trait.create(Object.prototype, Trait.override(Trait({
+            _keyListener: null,
+
+            attach: function(keyListenerClass) {
+                var pane = bespinController.pane;
+                var keyListener = keyListenerClass.create();
+                pane.set('defaultResponder', keyListener);
+                this._keyListener = keyListener;
+
+                return new Promise().resolve();
+            },
+
+            detach: function() {
+                bespinController.pane.set('defaultResponder', null);
+                this._keyListener = null;
+            }
+        }), RegistrationHandler)),
+
+        dock_view: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(dockViewClass) {
+                var dockView = dockViewClass.create();
+                bespinController.pane.appendChild(dockView);
+                bespinController._dockView = dockView;
+                return new Promise().resolve();
+            },
+
+            detach: function(dockViewClass) {
+                bespinController._dockView.removeFromParent();
+                bespinController._dockView = null;
+            }
+        }), RegistrationHandler)),
+
+        command_line: Trait.create(Object.prototype, Trait.override(Trait({
+            _cliView: null,
+
+            attach: function(cliViewClass) {
+                // TODO: customize which side this docks on
+                var dockView = bespinController._dockView;
+                var cliView = dockView.addDockedView(cliViewClass, 'bottom');
+                dockView.appendChild(cliView);
+
+                this._cliView = cliView;
+                return new Promise().resolve();
+            },
+
+            detach: function(cliView) {
+                this._cliView.removeFromParent();
+                this._cliView = null;
+            }
+        }), RegistrationHandler)),
+
+        social_view: Trait.create(Object.prototype, Trait.override(Trait({
+            _socialView: null,
+
+            attach: function(socialViewClass) {
+                // TODO: customize which side this docks on
+                var dockView = bespinController._dockView;
+                var socialView = dockView.addDockedView(socialViewClass,
+                    'right');
+                dockView.appendChild(socialView);
+
+                this._socialView = socialView;
+                return new Promise().resolve();
+            },
+
+            detach: function() {
+                this._socialView.removeFromParent();
+                this._socialView = null;
+            }
+        }), RegistrationHandler)),
+
+        editor_view: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(editorViewClass) {
+                var dockView = bespinController._dockView;
+                var editorView = dockView.createCenterView(editorViewClass);
+                dockView.set('centerView', editorView);
+
+                dockView.appendChild(editorView);
+                bespinController._editorView = editorView;
+
+                return new Promise().resolve();
+            },
+
+            detach: function(editorViewClass) {
+                bespinController._editorView.removeFromParent();
+                bespinController._editorView = null;
+            }
+        }), RegistrationHandler)),
+
+        edit_session: Trait.create(Object.prototype, Trait.override(Trait({
+            attach: function(m_editsession) {
+                var editorView = bespinController._editorView;
+                var textView = editorView.get('textView');
+                var layoutManager = editorView.get('layoutManager');
+                var textStorage = layoutManager.get('textStorage');
+                var syntaxManager = layoutManager.get('syntaxManager');
+
+                var buffer = m_editsession.Buffer.create({
+                    model:          textStorage,
+                    syntaxManager:  syntaxManager
+                });
+
+                var session = m_editsession.EditSession.create();
+                bespinController.session = session;
+                session.set('currentUser', bespinController._username);
+                session.set('currentView', textView);
+                session.set('currentBuffer', buffer);
+
+                if (bespinController.loadFile) {
+                    session.loadMostRecentOrNew();
+                }
+
+                bespinController._environment.sessionInitialized(session);
+
+                return new Promise().resolve();
+            },
+
+            detach: function() {
+                bespinController.session = null;
+            }
+        }), RegistrationHandler))
+    },
+
+    _attach: function(componentName) {
+        var attach = this._registrationHandlers[componentName].attach;
+        var promise = attach(this._components[componentName]);
+        promise.then(this._attached.bind(this));
+    },
+
+    _attached: function() {
+        this._state++;
+
+        var nextComponent = this._componentOrder[this._state];
+        if (nextComponent in this._components) {
+            this._attach(nextComponent);
         }
     },
 
-    _buildBindingsRegex: function(bindings) {
-        // Escape a given Regex string.
-        bindings.forEach(function(binding) {
-            if (!SC.none(binding.key)) {
-                binding.key = new RegExp("^" + binding.key + "$");
-            } else if (SC.isArray(binding.regex)) {
-                binding.key = new RegExp("^" + binding.regex[1] + "$");
-                binding.regex = new RegExp(binding.regex.join('') + "$");
-            } else {
-                binding.regex = new RegExp(binding.regex + "$");
-            }
-        });
+    // Rolls the initialized state of the application back down to (and
+    // including) the requested state, detaching components along the way.
+    _rollback: function(componentName) {
+        var index = this._componentOrder.indexOf(componentName);
+        while (this._state > index) {
+            this._state--;
+
+            var detachee = this._componentOrder[this._state];
+            this._registrationHandlers[detachee].detach();
+        }
+
+        this._attach(componentName);
     },
 
     /**
-     * Build the RegExp from the keymapping as RegExp can't stored directly
-     * in the metadata JSON and as the RegExp used to match the keys/buffer
-     * need to be adapted.
+     * @type{FileSource}
+     *
+     * The file source, populated by the "file_source" component.
      */
-    _buildKeymappingRegex: function(keymapping) {
-        for (state in keymapping.states) {
-            this._buildBindingsRegex(keymapping.states[state]);
-        }
-        keymapping._convertedRegExp = true;
+    files: null,
+
+    /**
+     * @property{boolean}
+     *
+     * Whether a file should be loaded at startup.
+     */
+    loadFile: true,
+
+    /**
+     * @type{SC.MainPane}
+     *
+     * The pane in which Bespin lives.
+     */
+    pane: null,
+
+    /**
+     * @type{EditSession}
+     *
+     * The current session, populated by the "edit_session" component.
+     */
+    session: null,
+
+    /**
+     * @type{class<SC.MainPane>}
+     *
+     * The class of the pane in which Bespin lives. This field will be
+     * instantiated when the environment is.
+     */
+    paneClass: SC.MainPane.extend({
+        layout: { left: 0, bottom: 0, top: 0, right: 0 }
+    }),
+
+    init: function() {
+        var componentOrder = [ 'environment' ];
+        this._componentOrder = componentOrder;
+
+        this._components = {};
+        this._loadedComponents = {};
+        this._registeredComponents = {};
     },
 
     /**
-     * Loop through the commands in the canon, looking for something that
-     * matches according to #_commandMatches, and return that.
+     * Called whenever one of the application components has been loaded or
+     * reloaded.
      */
-    _findCommandExtension: function(symbolicName, sender, flags) {
-        // If the flags indicate that we handle the textView's input then take
-        // a look at keymappings as well.
-        if (flags.isTextView) {
-            var currentState = sender._keyState;
-
-            // List of all the keymappings to look at.
-            var allKeymappings = [];
-
-            // TODO: The keymapping setting will go away soon in favor of
-            // simply enabling and disabling the appropriate plugins.
-            var keymappingName = settings.get('keymapping');
-            if (!SC.none(keymappingName) && keymappingName !== "standard") {
-                var keymapping = null;
-                catalog.getExtensions("keymapping").some(function(map) {
-                    if (map.name == keymappingName) {
-                      if (SC.none(map._convertedRegExp)) {
-                          this._buildKeymappingRegex(map);
-                      }
-                      keymapping = map;
-                      return true;
-                    }
-                    return false;
-                }.bind(this));
-                if (SC.none(keymapping)) {
-                    throw new Error("There is no keymapping named " +
-                                                            keymappingName);
-                }
-            }
-
-            // Don't add the symbolic name to the key buffer if the alt_ key is
-            // part of the symbolic name. If it starts with alt_, this means
-            // that the user hit an alt keycombo and there will be a single,
-            // new character detected after this event, which then will be
-            // added to the buffer (e.g. alt_j will result in ∆).
-            if (!flags.isCommandKey || symbolicName.indexOf('alt_') === -1) {
-                sender._keyBuffer +=
-                    symbolicName.replace(/ctrl_meta|meta/,'ctrl');
-                sender._keyMetaBuffer += symbolicName;
-            }
-
-            // Get the custom keymapping from the cache.
-            var ckmap = this._customKeymappingCache;
-
-            if (ckmap[keymappingName] && ckmap[keymappingName].states &&
-                        ckmap[keymappingName].states[currentState]) {
-                allKeymappings.push(ckmap[keymappingName]);
-            }
-            if (keymapping && keymapping.states[currentState]) {
-                allKeymappings.push(keymapping);
-            }
-
-            for (var i = 0; i < allKeymappings.length; i++) {
-                // Try to match the current mapping.
-                var result = this._bindingsMatch(
-                                    symbolicName,
-                                    flags,
-                                    sender,
-                                    allKeymappings[i]);
-
-                if (!SC.none(result)) {
-                    return result;
-                }
-            }
+    registerAppComponent: function(extension) {
+        var registeredComponents = this._registeredComponents;
+        var name = extension.name;
+        if (name in registeredComponents) {
+            return;
         }
 
-        var commandExts = catalog.getExtensions("command");
-        var reply = null;
-        var args = {};
+        registeredComponents[name] = true;
 
-        symbolicName = symbolicName.replace(/ctrl_meta|meta/,'ctrl');
+        extension.load(function(pointer) {
+            this._loadedComponents[name] = true;
+            this._components[name] = pointer;
 
-        commandExts.some(function(commandExt) {
-            if (this._commandMatches(commandExt, symbolicName, flags)) {
-                reply = commandExt;
-                return true;
+            if (this._componentOrder[this._state] === name) {
+                this._attach(name);
             }
-            return false;
         }.bind(this));
-
-        return SC.none(reply) ? null : { commandExt: reply, args: args};
     },
 
+    /** Called whenever one of the application components has been unloaded. */
+    unregisterAppComponent: function(extension) {
+        var name = extension.name;
+        var index = this._componentOrder.indexOf(extension.name);
 
-    /**
-     * Checks if the given parameters fit to one binding in the given bindings.
-     * Returns the command and arguments if a command was matched.
-     */
-    _bindingsMatch: function(symbolicName, flags, sender, keymapping) {
-        var match;
-        var commandExt = null;
-        var args = {};
-        var bufferToUse;
+        // TODO: Can't reload the root extension at this time.
+        this._rollback(this._componentOrder[index - 1]);
 
-        if (!SC.none(keymapping.hasMetaKey)) {
-            bufferToUse = sender._keyBuffer;
-        } else {
-            bufferToUse = sender._keyMetaBuffer;
-        }
-
-        // Add the alt_key to the buffer as we don't want it to be in the buffer
-        // that is saved but for matching, it needs to be there.
-        if (symbolicName.indexOf('alt_') === 0 && flags.isCommandKey) {
-            bufferToUse += symbolicName;
-        }
-
-        // Loop over all the bindings of the keymapp until a match is found.
-        keymapping.states[sender._keyState].some(function(binding) {
-            // Check if the key matches.
-            if (binding.key && !binding.key.test(symbolicName)) {
-                return false;
-            }
-
-            // Check if the regex matches.
-            if (binding.regex && !(match = binding.regex.exec(bufferToUse))) {
-                return false;
-            }
-
-            // Check for disallowed matches.
-            if (binding.disallowMatches) {
-                for (var i = 0; i < binding.disallowMatches.length; i++) {
-                    if (!!match[binding.disallowMatches[i]]) {
-                        return true;
-                    }
-                }
-            }
-
-            // Check predicates.
-            if (!exports.flagsMatch(binding.predicates, flags)) {
-                return false;
-            }
-
-            // If there is a command to execute, then figure out the
-            // comand and the arguments.
-            if (binding.exec) {
-                // Get the command.
-                commandExt = catalog.getExtensionByKey("command", binding.exec);
-                if (SC.none(commandExt)) {
-                    throw new Error("Can't find command " + binding.exec +
-                        " in state=" + sender._keyState +
-                        ", symbolicName=" + symbolicName);
-                }
-
-                // Bulid the arguments.
-                if (binding.params) {
-                    var value;
-                    binding.params.forEach(function(param) {
-                        if (!SC.none(param.match)) {
-                            value = match[param.match] || param.defaultValue;
-                        } else {
-                            value = param.defaultValue;
-                        }
-
-                        if (param.type === "number") {
-                            value = parseInt(value);
-                        }
-
-                        args[param.name] = value;
-                    });
-                }
-                sender.resetKeyBuffers();
-            }
-
-            // Handle the 'then' property.
-            if (binding.then) {
-                sender._keyState = binding.then;
-                sender.resetKeyBuffers();
-            }
-
-            // If there is no command matched now, then return a "false"
-            // command to stop matching.
-            if (SC.none(commandExt)) {
-                commandExt = "no command";
-            }
-
-            return true;
-        });
-
-        if (SC.none(commandExt)) {
-            return null;
-        }
-
-        return { commandExt: commandExt, args: args };
-    },
-
-    /**
-     * Check that the given command fits the given key name and flags.
-     */
-    _commandMatches: function(commandExt, symbolicName, flags) {
-        // Check predicates
-        if (!exports.flagsMatch(commandExt.predicates, flags)) {
-            return false;
-        }
-
-        var mappedKeys = commandExt.key;
-        if (!mappedKeys) {
-            return false;
-        }
-        if (typeof(mappedKeys) === 'string') {
-            if (mappedKeys != symbolicName) {
-                return false;
-            }
-            return true;
-        }
-
-        if (!mappedKeys.isArray) {
-            mappedKeys = [mappedKeys];
-            commandExt.key = mappedKeys;
-        }
-
-        for (var i = 0; i < mappedKeys.length; i++) {
-            var keymap = mappedKeys[i];
-            if (typeof(keymap) === 'string') {
-                if (keymap == symbolicName) {
-                    return true;
-                }
-                continue;
-            }
-
-            if (keymap.key != symbolicName) {
-                continue;
-            }
-
-            return exports.flagsMatch(keymap.predicates, flags);
-        }
-        return false;
-    },
-
-    /**
-     * Build a cache of custom keymappings whenever the associated setting
-     * changes.
-     */
-    _customKeymappingChanged: function() {
-        var ckc = this._customKeymappingCache =
-                            JSON.parse(settings.get('customKeymapping'));
-
-        for (mapping in ckc) {
-            for (state in ckc[mapping].states) {
-                this._buildBindingsRegex(ckc[mapping].states[state]);
-            }
-        }
-    }.observes("settings:index#settings.customKeymapping")
-});
-
-/**
- *
- */
-exports.flagsMatch = function(predicates, flags) {
-    if (SC.none(predicates)) {
-        return true;
+        delete this._registeredComponents[name];
+        delete this._components[name];
     }
+}));
 
-    if (!flags) {
-        return false;
-    }
+bespinController.init();
+exports.bespinController = bespinController;
 
-    for (var flagName in predicates) {
-        if (flags[flagName] !== predicates[flagName]) {
-            return false;
-        }
-    }
-
-    return true;
-};
-
-/**
- * The global exported KeyboardManager
- */
-exports.keyboardManager = KeyboardManager.create();
+var controller = exports.bespinController;
+exports.registerAppComponent = controller.registerAppComponent.
+    bind(controller);
+exports.unregisterAppComponent = controller.unregisterAppComponent.
+    bind(controller);
 
 
 });
 
-tiki.module("canon:request",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is
- * Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
-
-var SC = require("sproutcore/runtime").SC;
-
-var settings = require("settings").settings;
-
-/**
- * TODO: Consider if this is actually the best way to tell the world about the
- * created Output objects...
- */
-exports.history = SC.Object.create({
-    requests: [],
-
-    /**
-     * Keep the history to settings.historyLength
-     */
-    trim: function() {
-        var historyLength = settings.get("historyLength");
-        // This could probably be optimized with some maths, but 99.99% of the
-        // time we will only be off by one, so save the maths.
-        while (this.requests.length > historyLength) {
-            this.requests.shiftObject();
-        }
-    }.observes(".requests")
-});
-
-/**
- * To create an invocation, you need to do something like this (all the ctor
- * args are optional):
- * <pre>
- * var request = Request.create({
- *     command: command,
- *     commandExt: commandExt,
- *     args: args,
- *     typed: typed
- * });
- * </pre>
- */
-exports.Request = SC.Object.extend({
-    // Will be used in the keyboard case and the cli case
-    command: undefined,
-    commandExt: undefined,
-
-    // Will be used only in the cli case
-    args: undefined,
-    typed: undefined,
-
-    // Stuff we keep track of
-    outputs: undefined,
-    start: undefined,
-    end: undefined,
-    duration: undefined,
-    completed: undefined,
-    error: undefined,
-
-    /**
-     * Have we been initialized?
-     */
-    _inited: undefined,
-
-    /**
-     * Lazy init to register with the history should only be done on output.
-     * init() is expensive, and won't be used in the majority of cases
-     */
-    _init: function() {
-        this.set("_inited", true);
-        this.outputs = [];
-        this.start = new Date();
-        this.completed = false;
-        this.error = false;
-        exports.history.requests.pushObject(this);
-    },
-
-    /**
-     * Sugar for:
-     * <pre>output.set("error", true).done(output);</pre>
-     * Which is in turn sugar for:
-     * <pre>output.set("error", true).output(output).done();</pre>
-     */
-    doneWithError: function(content) {
-        this.set("error", true).done(content);
-    },
-
-    /**
-     * Declares that this function will not be automatically done when
-     * the command exits
-     */
-    async: function() {
-        if (!this.get("_inited")) {
-            this._init();
-        }
-    },
-
-    /**
-     * Complete the currently executing command with successful output.
-     * @param output Either DOM node, an SproutCore element or something that
-     * can be used in the content of a DIV to create a DOM node.
-     */
-    output: function(content) {
-        if (!this.get("_inited")) {
-            this._init();
-        }
-
-        this.outputs.pushObject(content);
-        return this;
-    },
-
-    /**
-     * All commands that do output must call this to indicate that the command
-     * has finished execution.
-     */
-    done: function(content) {
-        if (content) {
-            this.output(content);
-        }
-        this.set("completed", true);
-        this.set("end", new Date());
-        this.set("duration", this.get("end").getTime() - this.get("start").getTime());
-    }
-});
-
-});
-
-tiki.module("canon:index",function(require,exports,module){});
-;tiki.register("appsupport",{});
 tiki.module("appsupport:controllers/undomanager",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -59823,7 +60212,7 @@ tiki.module("appsupport:controllers/undomanager",function(require,exports,module
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -59927,64 +60316,9 @@ exports.undoManagerCommand = function(env, args, request) {
 
 });
 
-tiki.module("appsupport:views/keylistener",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is
- * Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
-
-var SC = require('sproutcore/runtime').SC;
-var keyboardManager = require('canon:keyboard').keyboardManager;
-
-/**
- * @class
- *
- * This simple responder listens for keys that should be handled by the
- * application and routes them to the appropriate objects.
- */
-exports.KeyListener = SC.Responder.extend({
-    performKeyEquivalent: function(key, evt) {
-        keyboardManager.processKeyEvent(evt, this, { "isApplication": true });
-    }
-});
-
-});
-
 tiki.module("appsupport:index",function(require,exports,module){});
-;tiki.register("delegate_support",{});
-tiki.module("delegate_support:index",function(require,exports,module) {
+;tiki.register("canon",{});
+tiki.module("canon:environment",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -59993,7 +60327,7 @@ tiki.module("delegate_support:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -60022,58 +60356,775 @@ tiki.module("delegate_support:index",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-"define metadata";
-({
-    "description": "Simple support for multiple delegates on an object"
+var SC = require('sproutcore/runtime').SC;
+var console = require('bespin:console').console;
+var bespin = require('appsupport:controllers/bespin').bespinController;
+
+/**
+ * The environment plays a similar role to the environment under unix.
+ * Bespin does not currently have a concept of variables, (i.e. things the user
+ * directly changes, however it does have a number of pre-defined things that
+ * are changed by the system.
+ * <p>The role of the Environment is likely to be expanded over time.
+ */
+exports.Environment = SC.Object.extend({
+    /**
+     * Retrieves the EditSession
+     */
+    session: function() {
+        return bespin.session;
+    }.property(),
+
+    /**
+     * Gets the currentView from the session.
+     */
+    view: function() {
+        var session = this.get('session');
+        if (!session) {
+            // This can happen if the session is being reloaded.
+            return null;
+        }
+        return session.get('currentView');
+    }.property(),
+
+    /**
+     * The current editor model might not always be easy to find so you should
+     * use <code>instruction.get('model')</code> to access the view where
+     * possible.
+     */
+    model: function() {
+        var session = this.get('session');
+        if (!session) {
+            console.error("command attempted to get model but there's no session");
+            return undefined;
+        }
+        var buffer = session.get('currentBuffer');
+        if (!buffer) {
+            console.error('Session has no current buffer');
+            return undefined;
+        }
+        return buffer.get('model');
+    }.property(),
+
+    /**
+     * Returns the currently-active syntax contexts.
+     */
+    contexts: function() {
+        var textView = this.get('view');
+        
+        // when editorapp is being refreshed, the textView is not available.
+        if (!textView) {
+            return [];
+        }
+        
+        var syntaxManager = textView.getPath('layoutManager.syntaxManager');
+        var pos = textView.getSelectedRange().start;
+        return syntaxManager.contextsAtPosition(pos);
+    }.property(),
+    
+    /**
+     * gets the current file from the session
+     */
+    file: function() {
+        var session = this.get('session');
+        if (!session) {
+            console.error("command attempted to get file but there's no session");
+            return undefined;
+        }
+        var buffer = session.get('currentBuffer');
+        if (!buffer) {
+            console.error('Session has no current buffer');
+            return undefined;
+        }
+        return buffer.get('file');
+    }.property(),
+
+    /**
+     * The current Buffer from the session
+     */
+    buffer: function() {
+        var session = this.get('session');
+        if (!session) {
+            console.error("command attempted to get buffer but there's no session");
+            return undefined;
+        }
+        return session.get('currentBuffer');
+    }.property(),
+
+    /**
+     * If files are available, this will get them. Perhaps we need some other
+     * mechanism for populating these things from the catalog?
+     */
+    files: function() {
+        return bespin.files;
+    }.property()
 });
-"end";
+
+/**
+ * The global environment.
+ * TODO: Check that this is the best way to do this.
+ */
+exports.global = exports.Environment.create();
+
+});
+
+tiki.module("canon:keyboard",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
 
 var SC = require('sproutcore/runtime').SC;
 
+var catalog = require('bespin:plugins').catalog;
+var console = require('bespin:console').console;
+var settings = require('settings').settings;
+
+var Request = require('canon:request').Request;
+var environment = require('canon:environment');
+
+var Trace = require('bespin:util/stacktrace').Trace;
+
 /**
- * @namespace
  *
- * This mixin provides support for delegate objects. It's similar to
- * SC.DelegateSupport but is simpler and allows multiple delegates.
  */
-exports.MultiDelegateSupport = {
-    /**
-     * @property{Array}
-     *
-     * The set of delegates.
-     */
-    delegates: [],
+exports.buildFlags = function(env, flags) {
+    flags.context = env.get('contexts')[0];
+    return flags;
+};
+
+/**
+ * The canon, or the repository of commands, contains functions to process
+ * events and dispatch command messages to targets.
+ * @class
+ */
+var KeyboardManager = SC.Object.extend({
+    _customKeymappingCache: { states: {} },
 
     /**
-     * Adds a delegate to the list of delegates.
+     * Returns character codes for the event.  The first value is the
+     * normalized code string, with any Shift or Ctrl characters added to the
+     * beginning. The second value is the char string by itself.
+     *
+     * TODO: This is almost a carbon copy of a function from SproutCore. The
+     * only change is that 'meta' is reported for function keys. This should be
+     * exposed as a public API from SproutCore instead of duplicating their
+     * code.
+     *
+     * @return{Array}
      */
-    addDelegate: function(delegate) {
-        this.set('delegates', this.get('delegates').concat(delegate));
+    _commandCodes: function() {
+        var orgEvt = this.originalEvent;
+        var allowShift = true;
+
+        var code=this.keyCode, ret=null, key=null, modifiers='', lowercase ;
+
+        // Absent a value for 'keyCode' or 'which', we can't compute the
+        // command codes. Bail out.
+        if (this.keyCode === 0 && this.which === 0) {
+            return false;
+        }
+
+        // handle function keys.
+        if (code) {
+            ret = SC.FUNCTION_KEYS[code] ;
+            if (!ret && (orgEvt.altKey || orgEvt.ctrlKey || orgEvt.metaKey)) {
+                ret = SC.PRINTABLE_KEYS[code];
+                // Don't handle the shift key if the combo is
+                //    (meta_|ctrl_)<number>
+                // This is necessary for the French keyboard. On that keyboard,
+                // you have to hold down the shift key to access the number
+                // characters.
+                if (code > 47 && code < 58) allowShift = orgEvt.altKey;
+            }
+
+            if (ret) {
+               if (orgEvt.altKey) modifiers += 'alt_' ;
+               if (orgEvt.ctrlKey) modifiers += 'ctrl_' ;
+               if (orgEvt.metaKey) modifiers += 'meta_';
+            } else if (orgEvt.ctrlKey || orgEvt.metaKey) {
+                return false;
+            }
+        }
+
+        // otherwise just go get the right key.
+        if (!ret) {
+            code = this.which ;
+            key = ret = String.fromCharCode(code) ;
+            lowercase = ret.toLowerCase() ;
+            if (orgEvt.metaKey) {
+               modifiers = 'meta_' ;
+               ret = lowercase;
+
+            } else ret = null ;
+        }
+
+        if (this.shiftKey && ret && allowShift) modifiers += 'shift_' ;
+
+        if (ret) ret = modifiers + ret ;
+        return [ret, key] ;
     },
 
     /**
-     * @protected
+     * Searches through the command canon for an event matching the given flags
+     * with a key equivalent matching the given SproutCore event, and, if the
+     * command is found, sends a message to the appropriate target.
      *
-     * For each delegate that implements the given method, calls it, passing
-     * this object as the first parameter along with any other parameters
-     * specified.
+     * This will get a couple of upgrades in the not-too-distant future:
+     * 1. caching in the Canon for fast lookup based on key
+     * 2. there will be an extra layer in between to allow remapping via
+     *    user preferences and keyboard mapping plugins
+     *
+     * @return True if a matching command was found, false otherwise.
      */
-    notifyDelegates: function(method) {
-        var args = [ this ];
-        for (var i = 1; i < arguments.length; i++) {
-            args.push(arguments[i]);
+    processKeyEvent: function(evt, sender, flags) {
+        //
+        // Use our modified commandCodes function to detect the meta key in
+        // more circumstances than SproutCore alone does.
+        //
+        // TODO: See comment in _commandCodes.
+        //
+
+        var symbolicName = this._commandCodes.call(evt)[0];
+        if (SC.none(symbolicName)) {
+            return false;
         }
 
-        this.get('delegates').forEach(function(delegate) {
-            if (delegate.respondsTo(method)) {
-                delegate[method].apply(delegate, args);
+        // TODO: Maybe it should be the job of our caller to do this?
+        exports.buildFlags(environment.global, flags);
+
+        flags.isCommandKey = true;
+        return this._matchCommand(symbolicName, sender, flags);
+    },
+
+    processKeyInput: function(text, sender, flags) {
+        flags.isCommandKey = false;
+        return this._matchCommand(text, sender, flags);
+    },
+
+    _matchCommand: function(symbolicName, sender, flags) {
+        var match = this._findCommandExtension(symbolicName, sender, flags);
+        if (match && match.commandExt !== 'no command') {
+            if (flags.isTextView) {
+                sender.resetKeyBuffers();
+            }
+
+            var commandExt = match.commandExt;
+            commandExt.load(function(command) {
+                var request = Request.create({
+                    command: command,
+                    commandExt: commandExt
+                });
+
+                try {
+                    command(environment.global, match.args, request);
+                    return true;
+                } catch (ex) {
+                    // TODO: Some UI?
+                    var trace = new Trace(ex, true);
+                    console.group('Error calling command');
+                    console.log('command=', commandExt);
+                    console.log('args=', match.args);
+                    console.error(ex);
+                    trace.log(3);
+                    console.groupEnd();
+                    return false;
+                }
+            });
+            return true;
+        }
+
+        // 'no command' is returned if a keyevent is handled but there is no
+        // command executed (for example when switchting the keyboard state).
+        if (match && match.commandExt === 'no command') {
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+    _buildBindingsRegex: function(bindings) {
+        // Escape a given Regex string.
+        bindings.forEach(function(binding) {
+            if (!SC.none(binding.key)) {
+                binding.key = new RegExp('^' + binding.key + '$');
+            } else if (SC.isArray(binding.regex)) {
+                binding.key = new RegExp('^' + binding.regex[1] + '$');
+                binding.regex = new RegExp(binding.regex.join('') + '$');
+            } else {
+                binding.regex = new RegExp(binding.regex + '$');
             }
         });
+    },
+
+    /**
+     * Build the RegExp from the keymapping as RegExp can't stored directly
+     * in the metadata JSON and as the RegExp used to match the keys/buffer
+     * need to be adapted.
+     */
+    _buildKeymappingRegex: function(keymapping) {
+        for (state in keymapping.states) {
+            this._buildBindingsRegex(keymapping.states[state]);
+        }
+        keymapping._convertedRegExp = true;
+    },
+
+    /**
+     * Loop through the commands in the canon, looking for something that
+     * matches according to #_commandMatches, and return that.
+     */
+    _findCommandExtension: function(symbolicName, sender, flags) {
+        // If the flags indicate that we handle the textView's input then take
+        // a look at keymappings as well.
+        if (flags.isTextView) {
+            var currentState = sender._keyState;
+
+            // Don't add the symbolic name to the key buffer if the alt_ key is
+            // part of the symbolic name. If it starts with alt_, this means
+            // that the user hit an alt keycombo and there will be a single,
+            // new character detected after this event, which then will be
+            // added to the buffer (e.g. alt_j will result in ∆).
+            if (!flags.isCommandKey || symbolicName.indexOf('alt_') === -1) {
+                sender._keyBuffer +=
+                    symbolicName.replace(/ctrl_meta|meta/,'ctrl');
+                sender._keyMetaBuffer += symbolicName;
+            }
+
+            // List of all the keymappings to look at.
+            var ak = [ this._customKeymappingCache ];
+
+            // Get keymapping extension points.
+            ak = ak.concat(catalog.getExtensions('keymapping'));
+
+            for (var i = 0; i < ak.length; i++) {
+                // Check if the keymapping has the current state.
+                if (SC.none(ak[i].states[currentState])) {
+                    continue;
+                }
+
+                if (SC.none(ak[i]._convertedRegExp)) {
+                    this._buildKeymappingRegex(ak[i]);
+                }
+
+                // Try to match the current mapping.
+                var result = this._bindingsMatch(
+                                    symbolicName,
+                                    flags,
+                                    sender,
+                                    ak[i]);
+
+                if (!SC.none(result)) {
+                    return result;
+                }
+            }
+        }
+
+        var commandExts = catalog.getExtensions('command');
+        var reply = null;
+        var args = {};
+
+        symbolicName = symbolicName.replace(/ctrl_meta|meta/,'ctrl');
+
+        commandExts.some(function(commandExt) {
+            if (this._commandMatches(commandExt, symbolicName, flags)) {
+                reply = commandExt;
+                return true;
+            }
+            return false;
+        }.bind(this));
+
+        return SC.none(reply) ? null : { commandExt: reply, args: args};
+    },
+
+
+    /**
+     * Checks if the given parameters fit to one binding in the given bindings.
+     * Returns the command and arguments if a command was matched.
+     */
+    _bindingsMatch: function(symbolicName, flags, sender, keymapping) {
+        var match;
+        var commandExt = null;
+        var args = {};
+        var bufferToUse;
+
+        if (!SC.none(keymapping.hasMetaKey)) {
+            bufferToUse = sender._keyBuffer;
+        } else {
+            bufferToUse = sender._keyMetaBuffer;
+        }
+
+        // Add the alt_key to the buffer as we don't want it to be in the buffer
+        // that is saved but for matching, it needs to be there.
+        if (symbolicName.indexOf('alt_') === 0 && flags.isCommandKey) {
+            bufferToUse += symbolicName;
+        }
+
+        // Loop over all the bindings of the keymapp until a match is found.
+        keymapping.states[sender._keyState].some(function(binding) {
+            // Check if the key matches.
+            if (binding.key && !binding.key.test(symbolicName)) {
+                return false;
+            }
+
+            // Check if the regex matches.
+            if (binding.regex && !(match = binding.regex.exec(bufferToUse))) {
+                return false;
+            }
+
+            // Check for disallowed matches.
+            if (binding.disallowMatches) {
+                for (var i = 0; i < binding.disallowMatches.length; i++) {
+                    if (!!match[binding.disallowMatches[i]]) {
+                        return true;
+                    }
+                }
+            }
+
+            // Check predicates.
+            if (!exports.flagsMatch(binding.predicates, flags)) {
+                return false;
+            }
+
+            // If there is a command to execute, then figure out the
+            // comand and the arguments.
+            if (binding.exec) {
+                // Get the command.
+                commandExt = catalog.getExtensionByKey('command', binding.exec);
+                if (SC.none(commandExt)) {
+                    throw new Error('Can\'t find command ' + binding.exec +
+                        ' in state=' + sender._keyState +
+                        ', symbolicName=' + symbolicName);
+                }
+
+                // Bulid the arguments.
+                if (binding.params) {
+                    var value;
+                    binding.params.forEach(function(param) {
+                        if (!SC.none(param.match) && !SC.none(match)) {
+                            value = match[param.match] || param.defaultValue;
+                        } else {
+                            value = param.defaultValue;
+                        }
+
+                        if (param.type === 'number') {
+                            value = parseInt(value);
+                        }
+
+                        args[param.name] = value;
+                    });
+                }
+                sender.resetKeyBuffers();
+            }
+
+            // Handle the 'then' property.
+            if (binding.then) {
+                sender._keyState = binding.then;
+                sender.resetKeyBuffers();
+            }
+
+            // If there is no command matched now, then return a 'false'
+            // command to stop matching.
+            if (SC.none(commandExt)) {
+                commandExt = 'no command';
+            }
+
+            return true;
+        });
+
+        if (SC.none(commandExt)) {
+            return null;
+        }
+
+        return { commandExt: commandExt, args: args };
+    },
+
+    /**
+     * Check that the given command fits the given key name and flags.
+     */
+    _commandMatches: function(commandExt, symbolicName, flags) {
+        // Check predicates
+        if (!exports.flagsMatch(commandExt.predicates, flags)) {
+            return false;
+        }
+
+        var mappedKeys = commandExt.key;
+        if (!mappedKeys) {
+            return false;
+        }
+        if (typeof(mappedKeys) === 'string') {
+            if (mappedKeys != symbolicName) {
+                return false;
+            }
+            return true;
+        }
+
+        if (!mappedKeys.isArray) {
+            mappedKeys = [mappedKeys];
+            commandExt.key = mappedKeys;
+        }
+
+        for (var i = 0; i < mappedKeys.length; i++) {
+            var keymap = mappedKeys[i];
+            if (typeof(keymap) === 'string') {
+                if (keymap == symbolicName) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (keymap.key != symbolicName) {
+                continue;
+            }
+
+            return exports.flagsMatch(keymap.predicates, flags);
+        }
+        return false;
+    },
+
+    /**
+     * Build a cache of custom keymappings whenever the associated setting
+     * changes.
+     */
+    _customKeymappingChanged: function() {
+        var ckc = this._customKeymappingCache =
+                            JSON.parse(settings.get('customKeymapping'));
+
+        ckc.states = ckc.states || {};
+
+        for (state in ckc.states) {
+            this._buildBindingsRegex(ckc.states[state]);
+        }
+    }.observes('settings:index#settings.customKeymapping')
+});
+
+/**
+ *
+ */
+exports.flagsMatch = function(predicates, flags) {
+    if (SC.none(predicates)) {
+        return true;
     }
+
+    if (!flags) {
+        return false;
+    }
+
+    for (var flagName in predicates) {
+        if (flags[flagName] !== predicates[flagName]) {
+            return false;
+        }
+    }
+
+    return true;
 };
+
+/**
+ * The global exported KeyboardManager
+ */
+exports.keyboardManager = KeyboardManager.create();
 
 
 });
+
+tiki.module("canon:request",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+var SC = require('sproutcore/runtime').SC;
+
+var settings = require('settings').settings;
+
+/**
+ * TODO: Consider if this is actually the best way to tell the world about the
+ * created Output objects...
+ */
+exports.history = SC.Object.create({
+    requests: [],
+
+    /**
+     * Keep the history to settings.historyLength
+     */
+    trim: function() {
+        var historyLength = settings.get('historyLength');
+        // This could probably be optimized with some maths, but 99.99% of the
+        // time we will only be off by one, so save the maths.
+        while (this.requests.length > historyLength) {
+            this.requests.shiftObject();
+        }
+    }.observes('.requests')
+});
+
+/**
+ * To create an invocation, you need to do something like this (all the ctor
+ * args are optional):
+ * <pre>
+ * var request = Request.create({
+ *     command: command,
+ *     commandExt: commandExt,
+ *     args: args,
+ *     typed: typed
+ * });
+ * </pre>
+ */
+exports.Request = SC.Object.extend({
+    // Will be used in the keyboard case and the cli case
+    command: undefined,
+    commandExt: undefined,
+
+    // Will be used only in the cli case
+    args: undefined,
+    typed: undefined,
+
+    // Stuff we keep track of
+    outputs: undefined,
+    start: undefined,
+    end: undefined,
+    duration: undefined,
+    completed: undefined,
+    error: undefined,
+
+    /**
+     * Have we been initialized?
+     */
+    _inited: undefined,
+
+    /**
+     * Lazy init to register with the history should only be done on output.
+     * init() is expensive, and won't be used in the majority of cases
+     */
+    _init: function() {
+        this.set('_inited', true);
+        this.outputs = [];
+        this.start = new Date();
+        this.completed = false;
+        this.error = false;
+        exports.history.requests.pushObject(this);
+    },
+
+    /**
+     * Sugar for:
+     * <pre>output.set('error', true).done(output);</pre>
+     * Which is in turn sugar for:
+     * <pre>output.set('error', true).output(output).done();</pre>
+     */
+    doneWithError: function(content) {
+        this.set('error', true).done(content);
+    },
+
+    /**
+     * Declares that this function will not be automatically done when
+     * the command exits
+     */
+    async: function() {
+        if (!this.get('_inited')) {
+            this._init();
+        }
+    },
+
+    /**
+     * Complete the currently executing command with successful output.
+     * @param output Either DOM node, an SproutCore element or something that
+     * can be used in the content of a DIV to create a DOM node.
+     */
+    output: function(content) {
+        if (!this.get('_inited')) {
+            this._init();
+        }
+
+        if (typeof content !== 'string') {
+            content = content.toString();
+        }
+
+        SC.run(function() {
+            this.outputs.pushObject(content);
+        }.bind(this));
+
+        return this;
+    },
+
+    /**
+     * All commands that do output must call this to indicate that the command
+     * has finished execution.
+     */
+    done: function(content) {
+        if (content) {
+            this.output(content);
+        }
+        this.set('completed', true);
+        this.set('end', new Date());
+        this.set('duration', this.get('end').getTime() - this.get('start').getTime());
+    }
+});
+
+});
+
+tiki.module("canon:index",function(require,exports,module){});
 ;tiki.register("rangeutils",{});
 tiki.module("rangeutils:utils/range",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
@@ -60084,7 +61135,7 @@ tiki.module("rangeutils:utils/range",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -60119,7 +61170,15 @@ var SC = require('sproutcore/runtime').SC;
  * Returns the result of adding the two positions.
  */
 exports.addPositions = function(a, b) {
-    return { row: a.row + b.row, column: a.column + b.column };
+    return { row: a.row + b.row, col: a.col + b.col };
+};
+
+/** Returns a copy of the given range. */
+exports.cloneRange = function(range) {
+    var oldStart = range.start, oldEnd = range.end;
+    var newStart = { row: oldStart.row, col: oldStart.col };
+    var newEnd = { row: oldEnd.row, col: oldEnd.col };
+    return { start: newStart, end: newEnd };
 };
 
 /**
@@ -60128,7 +61187,7 @@ exports.addPositions = function(a, b) {
  */
 exports.comparePositions = function(positionA, positionB) {
     var rowDiff = positionA.row - positionB.row;
-    return rowDiff === 0 ? positionA.column - positionB.column : rowDiff;
+    return rowDiff === 0 ? positionA.col - positionB.col : rowDiff;
 };
 
 /**
@@ -60142,10 +61201,10 @@ exports.equal = function(rangeA, rangeB) {
 exports.extendRange = function(range, delta) {
     var end = range.end;
     return {
-        start:  range.start,
-        end:    {
-            row:    end.row + delta.row,
-            column: end.column + delta.column
+        start: range.start,
+        end:   {
+            row: end.row + delta.row,
+            col: end.col + delta.col
         }
     };
 };
@@ -60191,7 +61250,7 @@ exports.intersectRangeSets = function(setA, setB) {
 
 exports.isZeroLength = function(range) {
     return range.start.row === range.end.row &&
-        range.start.column === range.end.column;
+        range.start.col === range.end.col;
 };
 
 /**
@@ -60224,7 +61283,7 @@ exports.rangeSetBoundaries = function(rangeSet) {
 
 exports.toString = function(range) {
     var start = range.start, end = range.end;
-    return "[ %@,%@ %@,%@ ]".fmt(start.row, start.column, end.row, end.column);
+    return '[ %@,%@ %@,%@ ]'.fmt(start.row, start.col, end.row, end.col);
 };
 
 /**
@@ -60233,14 +61292,22 @@ exports.toString = function(range) {
 exports.unionRanges = function(a, b) {
     return {
         start:  a.start.row < b.start.row ||
-            (a.start.row === b.start.row && a.start.column < b.start.column) ?
+            (a.start.row === b.start.row && a.start.col < b.start.col) ?
             a.start : b.start,
         end:    a.end.row > b.end.row ||
-            (a.end.row === b.end.row && a.end.column > b.end.column) ?
+            (a.end.row === b.end.row && a.end.col > b.end.col) ?
             a.end : b.end
     };
 };
 
+exports.isPosition = function(pos) {
+    return !SC.none(pos) && !SC.none(pos.row) && !SC.none(pos.col);
+};
+
+exports.isRange = function(range) {
+    return (!SC.none(range) && exports.isPosition(range.start) &&
+                                                exports.isPosition(range.end));
+};
 
 });
 
@@ -60255,7 +61322,7 @@ tiki.module("syntax_manager:controllers/standardsyntax",function(require,exports
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -60300,8 +61367,8 @@ exports.StandardSyntax = SC.Object.extend({
             return [];
          }
 
-        return actions.split(" ").map(function(action) {
-            var parts = action.split(":");
+        return actions.split(' ').map(function(action) {
+            var parts = action.split(':');
             return parts.length === 1 ? [ 'transition', parts[0] ] : parts;
         });
     },
@@ -60359,16 +61426,16 @@ exports.StandardSyntax = SC.Object.extend({
 
         var endColumn = line.length;
 
-        var column = start;
-        while (column !== endColumn) {
-            var str = stickySupported ? line : line.substring(column);
+        var col = start;
+        while (col !== endColumn) {
+            var str = stickySupported ? line : line.substring(col);
 
             if (states[state] === undefined) {
-                throw new Error("StandardSyntax: no such states '%@'".
+                throw new Error('StandardSyntax: no such states "%@"'.
                     fmt(state));
             }
 
-            var range = { start: column, state: state };
+            var range = { start: col, state: state };
             var newState;
             var alternations = states[state];
             var alternationCount = alternations.length;
@@ -60378,7 +61445,7 @@ exports.StandardSyntax = SC.Object.extend({
                 var regex = alt.regex;
 
                 if (stickySupported) {
-                    regex.lastIndex = column;
+                    regex.lastIndex = col;
                 }
 
                 var result = regex.exec(str);
@@ -60387,7 +61454,7 @@ exports.StandardSyntax = SC.Object.extend({
                 }
 
                 var resultLength = result[0].length;
-                range.end = column + resultLength;
+                range.end = col + resultLength;
                 range.tag = alt.tag;
                 range.actions = this._parseActions(alt.then);
 
@@ -60396,8 +61463,8 @@ exports.StandardSyntax = SC.Object.extend({
                 if (resultLength === 0 && newState === state) {
                     // Emit a helpful diagnostic rather than going into an
                     // infinite loop, to aid syntax writers...
-                    throw new Error("Syntax regex matches the empty " +
-                        "string and the state didn't change: " + regex.
+                    throw new Error('Syntax regex matches the empty ' +
+                        'string and the state didn\'t change: ' + regex.
                         toSource());
                 }
 
@@ -60407,23 +61474,23 @@ exports.StandardSyntax = SC.Object.extend({
 
             if (range.tag === undefined) {
                 // The (inefficient) default case.
-                range.end = column + 1;
+                range.end = col + 1;
                 range.tag = 'plain';
                 range.actions = [];
             }
 
-            if (column !== range.end) {
+            if (col !== range.end) {
                 // Only push the range if it spans at least one character.
                 attrs.push(range);
             }
 
-            column = range.end;
+            col = range.end;
         }
 
         if (end === null) {
             // Style the newline.
             attrs.push({
-                start:      column,
+                start:      col,
                 end:        null,
                 state:      state,
                 tag:        'plain',
@@ -60449,7 +61516,7 @@ tiki.module("syntax_manager:controllers/syntaxdirectory",function(require,export
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -60498,6 +61565,13 @@ var SyntaxInfo = SC.Object.extend({
     extension: null,
 
     /**
+     * @property{Array<string>}
+     *
+     * The set of file extensions that this syntax can handle.
+     */
+    fileExts: null,
+
+    /**
      * @property{string}
      *
      * The unique identifier for this syntax.
@@ -60505,11 +61579,16 @@ var SyntaxInfo = SC.Object.extend({
     name: null,
 
     init: function() {
-        this.set('name', this.get('extension').name);
+        var extension = this.get('extension');
+        this.set('name', extension.name);
+
+        var fileExts = extension.fileexts;
+        this.set('fileExts', SC.none(fileExts) ? [] : fileExts);
     }
 });
 
 exports.syntaxDirectory = SC.Object.create({
+    _fileExts: {},
     _syntaxInfo: {},
 
     /**
@@ -60532,7 +61611,20 @@ exports.syntaxDirectory = SC.Object.create({
 
     registerExtension: function(extension) {
         var syntaxInfo = SyntaxInfo.create({ extension: extension });
-        this._syntaxInfo[syntaxInfo.get('name')] = syntaxInfo;
+
+        var name = syntaxInfo.get('name');
+        this._syntaxInfo[name] = syntaxInfo;
+
+        // Add the file extensions to the index.
+        var fileExts = this._fileExts;
+        syntaxInfo.get('fileExts').forEach(function(fileExt) {
+            fileExts[fileExt] = name;
+        });
+    },
+
+    syntaxForFileExt: function(fileExt) {
+        var syntax = this._fileExts[fileExt.toLowerCase()];
+        return SC.none(syntax) ? 'plain' : syntax;
     }
 });
 
@@ -60548,7 +61640,7 @@ tiki.module("syntax_manager:controllers/syntaxmanager",function(require,exports,
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -60583,7 +61675,6 @@ var ArrayUtils = require('utils/array');
 var MultiDelegateSupport = require('delegate_support').MultiDelegateSupport;
 var Promise = m_promise.Promise;
 var Range = require('rangeutils:utils/range');
-var Yield = require('utils/yield');
 var catalog = require('bespin:plugins').catalog;
 var console = require('bespin:console').console;
 var syntaxDirectory = require('controllers/syntaxdirectory').syntaxDirectory;
@@ -60647,7 +61738,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
             });
 
         if (attrIndex === null) {
-            console.error("position not found", position);
+            console.error('position not found', position);
         }
 
         return attrIndex;
@@ -60655,9 +61746,9 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
 
     _attrsToString: function(attrs) {
         return attrs.map(function(range) {
-            return "%@.%@.%@@%@-%@".fmt(range.context, range.state, range.tag,
+            return '%@.%@.%@@%@-%@'.fmt(range.context, range.state, range.tag,
                 range.start, range.end);
-        }.bind(this)).join(", ");
+        }.bind(this)).join(', ');
     },
 
     _clearAttrsAtRow: function(row) {
@@ -60669,7 +61760,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
         this._lineAttrInfo[row].attrs = attrs;
     },
 
-    // Returns an array of context info, each with "attrs" and "next"
+    // Returns an array of context info, each with 'attrs' and 'next'
     // properties.
     _deepSyntaxInfoForLine: function(snapshot, line) {
         var promise = new Promise();
@@ -60961,7 +62052,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
         }
 
         var thisLineAttrInfo = lineAttrInfo[startRow];
-        var line = this.getPath('textStorage.lines')[startRow];
+        var line = this.getPath('layoutManager.textStorage.lines')[startRow];
 
         this._deepSyntaxInfoForLine(thisLineAttrInfo.snapshot, line).
             then(function(deepSyntaxInfo) {
@@ -60984,7 +62075,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
                 }
 
                 if (depth === 50) {
-                    // Do a "manual tail call" so that we don't overflow the
+                    // Do a 'manual tail call' so that we don't overflow the
                     // call stack. See bug 556151.
                     window.setTimeout(function() {
                         SC.run(function() {
@@ -61008,7 +62099,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
     // Invalidates all the highlighting.
     _reset: function() {
         var lineAttrInfo = [];
-        var lineCount = this.getPath('textStorage.lines').length;
+        var lineCount = this.getPath('layoutManager.textStorage.lines').length;
         var initialContext = this.get('initialContext');
 
         for (var i = 0; i < lineCount; i++) {
@@ -61042,7 +62133,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
                 attrs:  this._defaultAttrs(),
                 next:   { context: 'plain', state: 'start' }
             });
-        } else {
+        } else if (context !== null) {
             syntaxDirectory.loadSyntax(context).then(function(syntax) {
                 try {
                     syntax.syntaxInfoForLineFragment(context, state, line,
@@ -61050,14 +62141,20 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
                             promise.resolve(result);
                         });
                 } catch (e) {
-                    console.log("Syntax highlighter ", context, " caused an " +
-                        "exception:", e);
+                    console.log('Syntax highlighter ', context, ' caused an ' +
+                        'exception:', e);
                     promise.resolve({
                         attrs:  this._defaultAttrs(),
                         next:   { context: 'plain', state: 'start' }
                     });
                 }
             }.bind(this));
+        } else {
+            console.log('No syntax context');
+            promise.resolve({
+                attrs:  this._defaultAttrs(),
+                next:   { context: 'plain', state: 'start' }
+            });
         }
 
         return promise;
@@ -61081,16 +62178,17 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
     /**
      * @property{string}
      *
-     * The initial context. Defaults to "plain".
+     * The initial context. Defaults to 'plain'.
      */
     initialContext: 'plain',
 
     /**
-     * @property{TextStorage}
+     * @property{LayoutManager}
      *
-     * The character data is read from this text storage instance.
+     * The character info is read from this layout manager instance. Once the
+     * syntax manager is created, this cannot be modified.
      */
-    textStorage: null,
+    layoutManager: null,
 
     /**
      * Returns the attributed text currently in the cache for the given range
@@ -61135,20 +62233,11 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
 
     /**
      * Sets the initial context to the syntax highlighter appropriately for
-     * the given file extension, or to "plain" if the extension doesn't have an
+     * the given file extension, or to 'plain' if the extension doesn't have an
      * associated syntax highlighter.
      */
     setInitialContextFromExt: function(fileExt) {
-        fileExt = fileExt.toLowerCase();
-        var extension = catalog.getExtensionByKey('fileextension', fileExt);
-
-        var syntax;
-        if (SC.none(extension) || SC.none(extension.syntax)) {
-            syntax = 'plain';
-        } else {
-            syntax = extension.syntax;
-        }
-
+        var syntax = syntaxDirectory.syntaxForFileExt(fileExt);
         this.set('initialContext', syntax);
     },
 
@@ -61157,14 +62246,14 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
      * manager, for debugging purposes.
      */
     toString: function() {
-        return "{ lineAttrInfo: [ %@ ], invalidRows: [ %@ ] }".
+        return '{ lineAttrInfo: [ %@ ], invalidRows: [ %@ ] }'.
             fmt(this._lineAttrInfo.map(function(info) {
-                return "{ (%@) -> (%@) }".fmt(info.snapshot.map(function(cas) {
-                    return cas.context + ": " + cas.state;
-                }).join(", "),
-                info.attrs.map(this._attrsToString.bind(this)).join(", "));
-            }.bind(this)).join(", "),
-            this._invalidRows.join(", "));
+                return '{ (%@) -> (%@) }'.fmt(info.snapshot.map(function(cas) {
+                    return cas.context + ': ' + cas.state;
+                }).join(', '),
+                info.attrs.map(this._attrsToString.bind(this)).join(', '));
+            }.bind(this)).join(', '),
+            this._invalidRows.join(', '));
     },
 
     /**
@@ -61204,7 +62293,7 @@ exports.SyntaxManager = SC.Object.extend(MultiDelegateSupport, {
                     }
 
                     promise.resolve({
-                        startRow:   startRow,
+                        startRow:   invalidRow,
                         endRow:     firstUnchangedRow
                     });
                 }.bind(this));
@@ -61226,7 +62315,7 @@ tiki.module("syntax_manager:utils/array",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -61277,98 +62366,6 @@ exports.binarySearch = function(list, value, compare) {
 
 });
 
-tiki.module("syntax_manager:utils/yield",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is
- * Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
-
-require('sproutcore/runtime').SC;
-var Promise = require('bespin:promise').Promise;
-
-/**
- * Implements a "yieldable loop", which allows an asynchronous function to be
- * called repeatedly without having to create a new stack frame for every
- * synchronous iteration.
- *
- *   *  Each time around the loop, the condition is checked by calling
- *      cond(promise). cond() must either return true to continue iteration or
- *      resolve the promise and return false to stop iteration.
- *
- *   *  If the condition check passes, exec() is called. It must return a
- *      promise.
- *
- *   *  Once this promise is resolved, next(value, promise) is called with the
- *      value provided by the promise returned by exec(). The next() function
- *      must either resolve the promise and return false to stop iteration or
- *      return true to continue.
- *
- * @return A promise that the loop will be executed, which will resolve to the
- *         value supplied by cond() or next() (when either returns false).
- */
-exports.loop = function(cond, exec, next) {
-    var loopPromise = new Promise();
-
-    while (cond(loopPromise)) {
-        var execPromise = exec();
-
-        var execValue = execPromise.valueIfResolved();
-        if (execValue === null) {
-            // Asynchronous path
-            execPromise.then(function(execValue) {
-                if (next(execValue, loopPromise)) {
-                    exports.loop(cond, exec, next).then(function(loopValue) {
-                        loopPromise.resolve(loopValue);
-                    });
-                }
-            });
-            return loopPromise;
-        }
-
-        // Synchronous path
-        if (!next(execValue, loopPromise)) {
-            return loopPromise;
-        }
-    }
-
-    return loopPromise;
-};
-
-
-});
-
 tiki.module("syntax_manager:index",function(require,exports,module){});
 ;tiki.register("text_editor",{});
 tiki.module("text_editor:commands/editing",function(require,exports,module) {
@@ -61380,7 +62377,7 @@ tiki.module("text_editor:commands/editing",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -61439,15 +62436,19 @@ exports.deleteCommand = function(env, args, request) {
  * insertion point at the end of the deleted range.
  */
 exports.deleteLines = function(env, args, request) {
+    if (env.getPath('model.readOnly')) {
+        return;
+    }
+
     var view = env.get('view');
     var range = view.getSelectedRange();
 
     view.groupChanges(function() {
-        var startPos = { column: 0, row: range.start.row };
+        var startPos = { col: 0, row: range.start.row };
         view.replaceCharacters({
             start: startPos,
-            end: { column: 0, row: range.end.row + 1 }
-        }, "");
+            end: { col: 0, row: range.end.row + 1 }
+        }, '');
 
         view.moveCursorTo(startPos);
     });
@@ -61462,13 +62463,13 @@ exports.deleteLines = function(env, args, request) {
 var newline = function(model, view) {
     var selection = view.getSelectedRange();
     var position = selection.start;
-    var row = position.row, col = position.column;
+    var row = position.row, col = position.col;
 
     var lines = model.get('lines');
     var prefix = lines[row].substring(0, col);
 
     var spaces = /^\s*/.exec(prefix);
-    view.insertText("\n" + spaces);
+    view.insertText('\n' + spaces);
 };
 
 /**
@@ -61490,16 +62491,54 @@ exports.newline = function(env, args, request) {
 };
 
 /**
+ * Join the following line with the current one. Removes trailing whitespaces.
+ */
+exports.joinLines = function(env, args, request) {
+    var model = env.get('model');
+    if (model.get('readOnly')) {
+        return;
+    }
+
+    var view = env.get('view');
+    var selection = view.getSelectedRange();
+    var lines = model.get('lines');
+    var row = selection.end.row;
+
+    // Last line selected, which can't get joined.
+    if (lines.length == row) {
+        return;
+    }
+
+    view.groupChanges(function() {
+        var endCol = lines[row].length;
+
+        view.replaceCharacters({
+            start: {
+                col: endCol,
+                row: row
+            },
+            end: {
+                col: /^\s*/.exec(lines[row + 1])[0].length,
+                row: row + 1
+        }}, '');
+    });
+};
+
+/**
  * Creates a new, empty line below the current one, and places the insertion
  * point there.
  */
 exports.openLine = function(env, args, request) {
+    if (env.getPath('model.readOnly')) {
+        return;
+    }
+
     var model = env.get('model'), view = env.get('view');
 
     var selection = view.getSelectedRange();
     var row = selection.end.row;
     var lines = model.get('lines');
-    view.moveCursorTo({ row: row, column: lines[row].length });
+    view.moveCursorTo({ row: row, col: lines[row].length });
 
     newline(model, view);
 };
@@ -61508,11 +62547,11 @@ exports.tab = function(env, args, request) {
     var view = env.get('view');
     var tabstop = settings.get('tabstop');
     var selection = view.getSelectedRange();
-    var count = tabstop - selection.start.column % tabstop;
+    var count = tabstop - selection.start.col % tabstop;
 
-    var str = "";
+    var str = '';
     for (var i = 0; i < count; i++) {
-        str += " ";
+        str += ' ';
     }
 
     view.insertText(str);
@@ -61530,7 +62569,7 @@ tiki.module("text_editor:commands/editor",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -61627,7 +62666,7 @@ exports.gotoCommand = function(env, args, request) {
     }
 
     var view = env.get('view');
-    view.moveCursorTo({ row: args.line - 1, column: 0 });
+    view.moveCursorTo({ row: args.line - 1, col: 0 });
     view.focus();
 };
 
@@ -61651,7 +62690,7 @@ var withSelection = function(env, action) {
  */
 exports.replaceCommand = function(env, args, request) {
     withSelection(env, function(selected) {
-        return selected.replace(args.search + "/g", args.replace);
+        return selected.replace(args.search + '/g', args.replace);
     });
 };
 
@@ -61723,7 +62762,7 @@ tiki.module("text_editor:commands/movement",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -61816,7 +62855,7 @@ var moveOrSelectEnd = function(env, shift, inLine) {
     var lines = model.get('lines');
     var selectedRange = view.getSelectedRange();
     var row = inLine ? selectedRange.end.row : lines.length - 1;
-    view.moveCursorTo({ row: row, column: lines[row].length }, shift);
+    view.moveCursorTo({ row: row, col: lines[row].length }, shift);
 };
 
 exports.moveLineEnd = function(env, args, request) {
@@ -61843,7 +62882,7 @@ var moveOrSelectStart = function(env, shift, inLine) {
     var view = env.get('view');
     var range = view.getSelectedRange();
     var row = inLine ? range.end.row : 0;
-    var position = { row: row, column: 0 };
+    var position = { row: row, col: 0 };
     view.moveCursorTo(position, shift);
 };
 
@@ -61867,20 +62906,20 @@ exports.selectDocStart = function(env, args, request) {
 // Move or select to the next or previous word.
 //
 
-var seekNextStop = function(view, text, column, dir, rowChanged) {
+var seekNextStop = function(view, text, col, dir, rowChanged) {
     var isDelim;
     var countDelim = 0;
     var wasOverNonDelim = false;
 
     if (dir < 0) {
-        column--;
+        col--;
         if (rowChanged) {
             countDelim = 1;
         }
     }
 
-    while (column < text.length && column > -1) {
-        isDelim = view.isDelimiter(text[column]);
+    while (col < text.length && col > -1) {
+        isDelim = view.isDelimiter(text[col]);
         if (isDelim) {
             countDelim++;
         } else {
@@ -61889,14 +62928,14 @@ var seekNextStop = function(view, text, column, dir, rowChanged) {
         if ((isDelim || countDelim > 1) && wasOverNonDelim) {
             break;
         }
-        column += dir;
+        col += dir;
     }
 
     if (dir < 0) {
-        column++;
+        col++;
     }
 
-    return column;
+    return col;
 };
 
 var moveOrSelectNextWord = function(env, shiftDown) {
@@ -61905,25 +62944,25 @@ var moveOrSelectNextWord = function(env, shiftDown) {
 
     var selectedRange = view.getSelectedRange(true);
     var end = selectedRange.end;
-    var row = end.row, column = end.column;
+    var row = end.row, col = end.col;
 
     var currentLine = lines[row];
     var changedRow = false;
 
-    if (column >= currentLine.length) {
+    if (col >= currentLine.length) {
         row++;
         changedRow = true;
         if (row < lines.length) {
-            column = 0;
+            col = 0;
             currentLine = lines[row];
         } else {
             currentLine = '';
         }
     }
 
-    column = seekNextStop(view, currentLine, column, 1, changedRow);
+    col = seekNextStop(view, currentLine, col, 1, changedRow);
 
-    view.moveCursorTo({ row: row, column: column }, shiftDown);
+    view.moveCursorTo({ row: row, col: col }, shiftDown);
 };
 
 var moveOrSelectPreviousWord = function(env, shiftDown) {
@@ -61932,27 +62971,27 @@ var moveOrSelectPreviousWord = function(env, shiftDown) {
     var lines = model.get('lines');
     var selectedRange = view.getSelectedRange(true);
     var end = selectedRange.end;
-    var row = end.row, column = end.column;
+    var row = end.row, col = end.col;
 
     var currentLine = lines[row];
     var changedRow = false;
 
-    if (column > currentLine.length) {
-        column = currentLine.length;
-    } else if (column == 0) {
+    if (col > currentLine.length) {
+        col = currentLine.length;
+    } else if (col == 0) {
         row--;
         changedRow = true;
         if (row > -1) {
             currentLine = lines[row];
-            column = currentLine.length;
+            col = currentLine.length;
         } else {
             currentLine = '';
         }
     }
 
-    column = seekNextStop(view, currentLine, column, -1, changedRow);
+    col = seekNextStop(view, currentLine, col, -1, changedRow);
 
-    view.moveCursorTo({ row: row, column: column }, shiftDown);
+    view.moveCursorTo({ row: row, col: col }, shiftDown);
 };
 
 exports.moveNextWord = function(env, args, request) {
@@ -61994,7 +63033,7 @@ tiki.module("text_editor:commands/scrolling",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -62029,7 +63068,7 @@ tiki.module("text_editor:commands/scrolling",function(require,exports,module) {
  * Scrolls to the start of the document.
  */
 exports.scrollDocStart = function(env, args, request) {
-    env.get('view').scrollToPosition({ column: 0, row: 0 });
+    env.get('view').scrollToPosition({ col: 0, row: 0 });
 };
 
 /**
@@ -62065,7 +63104,7 @@ tiki.module("text_editor:controllers/layoutmanager",function(require,exports,mod
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -62104,6 +63143,35 @@ var catalog = require('bespin:plugins').catalog;
 
 exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     _maximumWidth: 0,
+    _syntaxManagerInitialized: false,
+    _textStorage: null,
+
+    _textStorageChanged: function() {
+        var oldTextStorage = this._textStorage;
+        if (!SC.none(oldTextStorage)) {
+            oldTextStorage.removeDelegate(this);
+        }
+
+        var newTextStorage = this.get('textStorage');
+        this._textStorage = newTextStorage;
+        newTextStorage.addDelegate(this);
+
+        if (this._syntaxManagerInitialized) {
+            var oldRange = oldTextStorage.range();
+            var newRange = newTextStorage.range();
+
+            if (!SC.none(oldTextStorage)) {
+                var syntaxManager = this.get('syntaxManager');
+                syntaxManager.layoutManagerReplacedText(oldRange, newRange);
+            }
+
+            // During initial setup, the text storage is set before the syntax
+            // manager is. We can't recompute the layout before the syntax
+            // manager is set up, so we solve this chicken-and-egg problem by
+            // suppressing the layout.
+            this._recomputeLayoutForRanges(oldRange, newRange);
+        }
+    }.observes('textStorage'),
 
     /**
      * @property{number}
@@ -62129,8 +63197,8 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     /**
      * @property
      *
-     * The margins on each edge in pixels, expressed as an object with "left",
-     * "bottom", "top", and "right" properties.
+     * The margins on each edge in pixels, expressed as an object with 'left',
+     * 'bottom', 'top', and 'right' properties.
      *
      * Do not modify the properties of this object directly; clone, adjust, and
      * reset the margin property of the layout manager instead.
@@ -62155,8 +63223,8 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     /**
      * @property{Array<object>}
      *
-     * The marked-up lines of text. Each line has the properties "characters",
-     * "colors", and "lineHeight".
+     * The marked-up lines of text. Each line has the properties 'characters',
+     * 'colors', and 'lineHeight'.
      */
     textLines: null,
 
@@ -62175,15 +63243,15 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      * TODO: Convert to a SproutCore theme.
      */
     theme: {
-        editorTextColor:            "rgb(230, 230, 230)",
-        editorTextColor_comment:    "rgb(102, 102, 102)",
-        editorTextColor_directive:  "rgb(153, 153, 153)",
-        editorTextColor_error:      "rgb(255, 0, 0)",
-        editorTextColor_identifier: "rgb(230, 230, 230)",
-        editorTextColor_keyword:    "rgb(66, 168, 237)",
-        editorTextColor_operator:   "rgb(136, 187, 255)",
-        editorTextColor_plain:      "rgb(230, 230, 230)",
-        editorTextColor_string:     "rgb(3, 154, 10)"
+        editorTextColor:            'rgb(230, 230, 230)',
+        editorTextColor_comment:    'rgb(102, 102, 102)',
+        editorTextColor_directive:  'rgb(153, 153, 153)',
+        editorTextColor_error:      'rgb(255, 0, 0)',
+        editorTextColor_identifier: 'rgb(230, 230, 230)',
+        editorTextColor_keyword:    'rgb(66, 168, 237)',
+        editorTextColor_operator:   'rgb(136, 187, 255)',
+        editorTextColor_plain:      'rgb(230, 230, 230)',
+        editorTextColor_string:     'rgb(3, 154, 10)'
     },
 
     _computeInvalidRects: function(oldRange, newRange) {
@@ -62212,8 +63280,8 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     // Returns the last valid position in the buffer.
     _lastCharacterPosition: function() {
         return {
-            row:    this.get('textLines').length - 1,
-            column: this._maximumWidth
+            row: this.get('textLines').length - 1,
+            col: this._maximumWidth
         };
     },
 
@@ -62232,7 +63300,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     },
 
     _recomputeEntireLayout: function() {
-        var entireRange = this.get('textStorage').range();
+        var entireRange = this._textStorage.range();
         this._recomputeLayoutForRanges(entireRange, entireRange);
     },
 
@@ -62241,7 +63309,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         var newEndRow = newRange.end.row;
         var newRowCount = newEndRow - oldStartRow + 1;
 
-        var lines = this.getPath('textStorage.lines');
+        var lines = this._textStorage.get('lines');
         var theme = this.get('theme');
         var plainColor = theme.editorTextColor_plain;
 
@@ -62274,10 +63342,10 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      */
     boundingRect: function() {
         return this.rectsForRange({
-            start:  { row: 0, column: 0 },
+            start:  { row: 0, col: 0 },
             end:    {
-                row:    this.get('textLines').length - 1,
-                column: this._maximumWidth
+                row: this.get('textLines').length - 1,
+                col: this._maximumWidth
             }
         })[0];
     },
@@ -62287,7 +63355,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      *
      * @return Returns an object with three properties:
      *   * row: The row of the character nearest the point.
-     *   * column: The column of the character nearest the point.
+     *   * col: The col of the character nearest the point.
      *   * partialFraction: The fraction of the horizontal distance between
      *       this character and the next character. The extreme left of the
      *       character is 0.0, while the extreme right of the character is 1.0.
@@ -62303,16 +63371,16 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         var x = point.x - margin.left, y = point.y - margin.top;
 
         var characterWidth = this.get('characterWidth');
-        var textStorage = this.get('textStorage');
+        var textStorage = this._textStorage;
         var clampedPosition = textStorage.clampPosition({
-            row:    Math.floor(y / this.get('lineHeight')),
-            column: Math.floor(x / characterWidth)
+            row: Math.floor(y / this.get('lineHeight')),
+            col: Math.floor(x / characterWidth)
         });
 
         var lineLength = textStorage.get('lines')[clampedPosition.row].length;
         return SC.mixin(clampedPosition, {
             partialFraction:
-                x < 0 || clampedPosition.column === lineLength ? 0.0 :
+                x < 0 || clampedPosition.col === lineLength ? 0.0 :
                 x % characterWidth / characterWidth
         });
     },
@@ -62332,12 +63400,12 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         var x = rect.x - margin.left, y = rect.y - margin.top;
         return {
             start:  {
-                row:    Math.max(Math.floor(y / lineHeight), 0),
-                column: Math.max(Math.floor(x / characterWidth), 0)
+                row: Math.max(Math.floor(y / lineHeight), 0),
+                col: Math.max(Math.floor(x / characterWidth), 0)
             },
             end:    {
-                row:    Math.floor((y + rect.height - 1) / lineHeight),
-                column: Math.floor((x + rect.width - 1) / characterWidth) + 1
+                row: Math.floor((y + rect.height - 1) / lineHeight),
+                col: Math.floor((x + rect.width - 1) / characterWidth) + 1
             }
         };
     },
@@ -62348,7 +63416,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
     characterRectForPosition: function(position) {
         return this.rectsForRange({
             start:  position,
-            end:    { row: position.row, column: position.column + 1 }
+            end:    { row: position.row, col: position.col + 1 }
         })[0];
     },
 
@@ -62360,10 +63428,11 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      * syntaxManager property.
      */
     createSyntaxManager: function() {
-        this.set('syntaxManager', this.get('syntaxManager').create({
-            delegates:      [ this ],
-            textStorage:    this.get('textStorage')
-        }));
+        var klass = this.get('syntaxManager');
+        var syntaxManager = klass.create({ layoutManager: this });
+        syntaxManager.addDelegate(this);
+        this.set('syntaxManager', syntaxManager);
+        this._syntaxManagerInitialized = true;
     },
 
     /**
@@ -62374,13 +63443,15 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      * textStorage property.
      */
     createTextStorage: function() {
-        this.set('textStorage', this.get('textStorage').create());
+        var klass = this.get('textStorage');
+        var textStorage = klass.create();
+        this.set('textStorage', textStorage);
     },
 
     init: function() {
         this.set('textLines', [
             {
-                characters: "",
+                characters: '',
                 colors:     [
                     {
                         start:  0,
@@ -62392,10 +63463,10 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         ]);
 
         this.createTextStorage();
-        this.get('textStorage').addDelegate(this);
-
         this.createSyntaxManager();
 
+        // Now that the syntax manager is set up, we can recompute the layout.
+        // (See comments in _textStorageChanged().)
         this._recomputeEntireLayout();
     },
 
@@ -62406,8 +63477,8 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
      */
     lineRectForRow: function(row) {
         return this.rectsForRange({
-            start:  { row: row, column: 0                   },
-            end:    { row: row, column: this._maximumWidth  }
+            start:  { row: row, col: 0                   },
+            end:    { row: row, col: this._maximumWidth  }
         })[0];
     },
 
@@ -62416,7 +63487,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         var characterWidth = this.get('characterWidth');
         var lineHeight = this.get('lineHeight');
         return {
-            x:      margin.left + characterWidth * position.column,
+            x:      margin.left + characterWidth * position.col,
             y:      margin.top + lineHeight * position.row,
             width:  characterWidth,
             height: lineHeight
@@ -62433,8 +63504,8 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
         var margin = this.get('margin');
 
         var start = range.start, end = range.end;
-        var startRow = start.row, startColumn = start.column;
-        var endRow = end.row, endColumn = end.column;
+        var startRow = start.row, startColumn = start.col;
+        var endRow = end.row, endColumn = end.col;
 
         if (startRow === endRow) {
             // The simple rectangle case.
@@ -62513,7 +63584,7 @@ exports.LayoutManager = SC.Object.extend(MultiDelegateSupport, {
 
         for (var i = 0; i < attrs.length; i++) {
             textLines[startRow + i].colors = attrs[i].map(function(range) {
-                var color = theme["editorTextColor_" + range.tag];
+                var color = theme['editorTextColor_' + range.tag];
                 if (SC.none(color)) {
                     color = theme.editorTextColor_plain;
                 }
@@ -62536,7 +63607,7 @@ tiki.module("text_editor:controllers/search",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -62606,10 +63677,10 @@ exports.EditorSearchController = SC.Object.extend({
 
     _makeRange: function(searchResult, row) {
         return {
-            start: { row: row, column: searchResult.index },
+            start: { row: row, col: searchResult.index },
             end: {
                 row: row,
-                column: searchResult.index + searchResult[0].length
+                col: searchResult.index + searchResult[0].length
             }
         };
     },
@@ -62681,7 +63752,7 @@ exports.EditorSearchController = SC.Object.extend({
         var lines = textView.getPath('layoutManager.textStorage.lines');
         var searchResult;
 
-        searchRegExp.lastIndex = startPos.column;
+        searchRegExp.lastIndex = startPos.col;
 
         var row;
         for (row = startPos.row; row < lines.length; row++) {
@@ -62725,7 +63796,7 @@ exports.EditorSearchController = SC.Object.extend({
         var searchResults;
 
         // Treat the first line specially.
-        var firstLine = lines[startPos.row].substring(0, startPos.column);
+        var firstLine = lines[startPos.row].substring(0, startPos.col);
         searchResults = this._findMatchesInString(firstLine);
 
         if (searchResults.length !== 0) {
@@ -62772,7 +63843,7 @@ tiki.module("text_editor:controllers/undo",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -62831,8 +63902,8 @@ exports.EditorUndoController = SC.Object.extend({
     _beginTransaction: function() {
         if (this._inTransaction) {
             console.trace();
-            throw new Error("UndoController._beginTransaction() called with a " +
-                "transaction already in place");
+            throw new Error('UndoController._beginTransaction() called with a ' +
+                'transaction already in place');
         }
 
         this._inTransaction = true;
@@ -62841,8 +63912,8 @@ exports.EditorUndoController = SC.Object.extend({
 
     _endTransaction: function() {
         if (!this._inTransaction) {
-            throw new Error("UndoController._endTransaction() called without a " +
-                "transaction in place");
+            throw new Error('UndoController._endTransaction() called without a ' +
+                'transaction in place');
         }
 
         undoManager.registerUndo(this, this._record);
@@ -62864,7 +63935,7 @@ exports.EditorUndoController = SC.Object.extend({
             // Can't think of any reason why this should be supported, and it's
             // often an indication that someone forgot an endTransaction()
             // call somewhere...
-            throw new Error("UndoController._undoOrRedo() called while in a transaction");
+            throw new Error('UndoController._undoOrRedo() called while in a transaction');
         }
 
         if (!this._tryApplyingPatches(patches)) {
@@ -62900,8 +63971,8 @@ exports.EditorUndoController = SC.Object.extend({
 
     textViewReplacedCharacters: function(sender, oldRange, characters) {
         if (!this._inTransaction) {
-            throw new Error("UndoController.textViewReplacedCharacters()" +
-                " called outside a transaction");
+            throw new Error('UndoController.textViewReplacedCharacters()' +
+                ' called outside a transaction');
         }
 
         this._record.patches.push({
@@ -62910,7 +63981,7 @@ exports.EditorUndoController = SC.Object.extend({
             newCharacters:  characters,
             newRange:       this.getPath('textView.layoutManager.textStorage').
                             resultingRangeForReplacement(oldRange,
-                            characters.split("\n"))
+                            characters.split('\n'))
         });
 
         this._deletedCharacters = null;
@@ -62918,8 +63989,8 @@ exports.EditorUndoController = SC.Object.extend({
 
     textViewWillReplaceRange: function(sender, oldRange) {
         if (!this._inTransaction) {
-            throw new Error("UndoController.textViewWillReplaceRange() called" +
-                " outside a transaction");
+            throw new Error('UndoController.textViewWillReplaceRange() called' +
+                ' outside a transaction');
         }
 
         this._deletedCharacters = this.getPath('textView.layoutManager.' +
@@ -62950,7 +64021,7 @@ tiki.module("text_editor:mixins/textbuffer",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -62993,7 +64064,7 @@ exports.TextBuffer = {
      * Deletes all characters in the range.
      */
     deleteCharacters: function(range) {
-        this.replaceCharacters(range, "");
+        this.replaceCharacters(range, '');
     },
 
     /**
@@ -63016,8 +64087,8 @@ exports.TextBuffer = {
         return {
             start:  start,
             end:    {
-                row:    start.row + lineCount - 1,
-                column: (lineCount === 1 ? start.column : 0) + lastLineLength
+                row: start.row + lineCount - 1,
+                col: (lineCount === 1 ? start.col : 0) + lastLineLength
             }
         };
     }
@@ -63035,7 +64106,7 @@ tiki.module("text_editor:mixins/textinput",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -63077,9 +64148,9 @@ var SC = require('sproutcore/runtime').SC;
  * available.
  *
  * To use this mixin, derive from it and implement the functions (don't have to)
- *   - copy: function() { return "text for clipboard" }
- *   - cut: function() { "Cut some text"; return "text for clipboard"}
- *   - textInserted: function(newInsertedText) { "handle new inserted text"; }
+ *   - copy: function() { return 'text for clipboard' }
+ *   - cut: function() { 'Cut some text'; return 'text for clipboard'}
+ *   - textInserted: function(newInsertedText) { 'handle new inserted text'; }
  * Note: Pasted text is provied through the textInserted(pastedText) function.
  *
  * Make sure to call the superclass implementation if you override any of the
@@ -63099,7 +64170,7 @@ exports.TextInput = {
     _TextInput_wantsFocus: false,
 
     // Keyevents and copy/cut/paste are not the same on Safari and Chrome.
-    _isChrome: !!parseFloat(navigator.userAgent.split("Chrome/")[1]),
+    _isChrome: !!parseFloat(navigator.userAgent.split('Chrome/')[1]),
 
     // This function doesn't work on WebKit! The textContent comes out empty...
     _TextInput_textFieldChanged: function() {
@@ -63114,7 +64185,7 @@ exports.TextInput = {
         if (text == '') {
             return;
         }
-        textField.value = "";
+        textField.value = '';
 
         this._TextInput_textInserted(text);
     },
@@ -63187,12 +64258,12 @@ exports.TextInput = {
             // Add a textarea to handle focus, copy & paste and key input
             // within the current view and hide it under the view.
             var frame = this.get('frame');
-            var textFieldContext = context.begin("textarea");
+            var textFieldContext = context.begin('textarea');
             this._TextInput_textFieldId = SC.guidFor(textFieldContext);
             textFieldContext.id(this._TextInput_textFieldId);
-            textFieldContext.attr("style", "position: absolute; " +
-                "z-index: -99999; top: 0px; left: 0px; width: 0px; " +
-                "height: 0px");
+            textFieldContext.attr('style', 'position: absolute; ' +
+                'z-index: -99999; top: -999px; left: -999px; width: 0px; ' +
+                'height: 0px');
             textFieldContext.end();
         }
     },
@@ -63205,7 +64276,7 @@ exports.TextInput = {
     didCreateLayer: function() {
         arguments.callee.base.apply(this, arguments);
 
-        var textField = this.$("#" + this._TextInput_textFieldId)[0];
+        var textField = this.$('#' + this._TextInput_textFieldId)[0];
         this._TextInput_textFieldDom = textField;
         var self = this;
 
@@ -63409,7 +64480,7 @@ tiki.module("text_editor:models/textstorage",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -63444,18 +64515,27 @@ var TextBuffer = require('mixins/textbuffer').TextBuffer;
 
 exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
     /**
+     * @property{string}
+     *
+     * The initial string to store in the text storage buffer. Has no meaning
+     * after this object is initialized.
+     */
+    initialValue: "",
+
+    /**
      * @property{Array<String>}
      *
      * The list of lines, stored as an array of strings. Read-only.
      */
     lines: null,
 
-    value: function(key, value) {
-        if (value !== undefined) {
-            this.replaceCharacters(this.range(), value);
-        }
-        return this.get('lines').join("\n");
-    }.property('lines.[]'),
+    /**
+     * @property{boolean}
+     *
+     * Whether this model is read-only. Attempts to modify a read-only model
+     * result in exceptions.
+     */
+    readOnly: false,
 
     /**
      * Returns the position of the nearest character to the given position,
@@ -63465,14 +64545,14 @@ exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
         var lines = this.get('lines');
         var row = position.row;
         if (row < 0) {
-            return { row: 0, column: 0 };
+            return { row: 0, col: 0 };
         } else if (row >= lines.length) {
             return this.range().end;
         }
 
         return {
-            row:    row,
-            column: Math.max(0, Math.min(position.column, lines[row].length))
+            row: row,
+            col: Math.max(0, Math.min(position.col, lines[row].length))
         };
     },
 
@@ -63499,25 +64579,25 @@ exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
         for (var i = Math.abs(count); i !== 0; i--) {
             if (forward) {
                 var rowLength = lines[pos.row].length;
-                if (pos.row === lineCount - 1 && pos.column === rowLength) {
+                if (pos.row === lineCount - 1 && pos.col === rowLength) {
                     return pos;
                 }
-                pos = pos.column === rowLength ?
-                    { row: pos.row + 1, column: 0               } :
-                    { row: pos.row,     column: pos.column + 1  };
+                pos = pos.col === rowLength ?
+                    { row: pos.row + 1, col: 0            } :
+                    { row: pos.row,     col: pos.col + 1  };
             } else {
-                if (pos.row === 0 && pos.column == 0) {
+                if (pos.row === 0 && pos.col == 0) {
                     return pos;
                 }
 
-                if (pos.column === 0) {
+                if (pos.col === 0) {
                     var lines = this.get('lines');
                     pos = {
                         row:    pos.row - 1,
-                        column: lines[pos.row - 1].length
+                        col: lines[pos.row - 1].length
                     };
                 } else {
-                    pos = { row: pos.row, column: pos.column - 1 };
+                    pos = { row: pos.row, col: pos.col - 1 };
                 }
             }
         }
@@ -63531,20 +64611,24 @@ exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
         var lines = this.get('lines');
         var start = range.start, end = range.end;
         var startRow = start.row, endRow = end.row;
-        var startColumn = start.column, endColumn = end.column;
+        var startColumn = start.col, endColumn = end.col;
         if (startRow === endRow) {
             return lines[startRow].substring(startColumn, endColumn);
         }
         return [ lines[startRow].substring(startColumn) ].
             concat(lines.slice(startRow + 1, endRow),
-            lines[endRow].substring(0, endColumn)).join("\n");
+            lines[endRow].substring(0, endColumn)).join('\n');
+    },
+
+    getValue: function() {
+        return this.get('lines').join('\n');
     },
 
     init: function() {
-        this.superclass();
+        arguments.callee.base.apply(this, arguments);
 
-        this.set('delegates', []);
-        this.set('lines', [ "" ]);
+        this.set('lines', this.get('initialValue').split('\n'));
+        delete this.initialValue;
     },
 
     /**
@@ -63553,10 +64637,10 @@ exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
     range: function() {
         var lines = this.get('lines');
         return {
-            start:  { row: 0, column: 0 },
+            start:  { row: 0, col: 0 },
             end:    {
-                row:    lines.length - 1,
-                column: lines[lines.length - 1].length
+                row: lines.length - 1,
+                col: lines[lines.length - 1].length
             }
         };
     },
@@ -63565,24 +64649,35 @@ exports.TextStorage = SC.Object.extend(MultiDelegateSupport, TextBuffer, {
      * Replaces the characters within the supplied range with the given string.
      */
     replaceCharacters: function(oldRange, characters) {
-        var addedLines = characters.split("\n");
+        if (this.get('readOnly')) {
+            throw new Error("Attempt to modify a read-only text storage object");
+        }
+
+        var addedLines = characters.split('\n');
         var addedLineCount = addedLines.length;
 
         var newRange = this.resultingRangeForReplacement(oldRange, addedLines);
 
         var oldStart = oldRange.start, oldEnd = oldRange.end;
         var oldStartRow = oldStart.row, oldEndRow = oldEnd.row;
-        var oldStartColumn = oldStart.column;
+        var oldStartColumn = oldStart.col;
 
         var lines = this.get('lines');
         addedLines[0] = lines[oldStartRow].substring(0, oldStartColumn) +
             addedLines[0];
         addedLines[addedLineCount - 1] +=
-            lines[oldEndRow].substring(oldEnd.column);
+            lines[oldEndRow].substring(oldEnd.col);
 
         lines.replace(oldStartRow, oldEndRow - oldStartRow + 1, addedLines);
 
         this.notifyDelegates('textStorageEdited', oldRange, newRange);
+    },
+
+    /**
+     * Sets the contents of the text buffer to the given string.
+     */
+    setValue: function(newValue) {
+        this.replaceCharacters(this.range(), newValue);
     }
 });
 
@@ -63598,7 +64693,7 @@ tiki.module("text_editor:utils/rect",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -63739,7 +64834,7 @@ tiki.module("text_editor:views/canvas",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -63835,7 +64930,7 @@ exports.CanvasView = SC.View.extend({
         }
     },
 
-    layoutStyle: { left: "0px", top: "0px" },
+    layoutStyle: { left: '0px', top: '0px' },
 
     /**
      * @property{Number}
@@ -63856,7 +64951,7 @@ exports.CanvasView = SC.View.extend({
 
     didCreateLayer: function() {
         arguments.callee.base.apply(this, arguments);
-        this._cvCanvasDom = this.$("#" + this._cvCanvasId)[0];
+        this._cvCanvasDom = this.$('#' + this._cvCanvasId)[0];
         this.redraw();
     },
 
@@ -63952,12 +65047,12 @@ exports.CanvasView = SC.View.extend({
 
         if (firstTime) {
             var parentFrame = this.getPath('parentView.frame');
-            var canvasContext = context.begin("canvas");
+            var canvasContext = context.begin('canvas');
             this._cvCanvasId = SC.guidFor(canvasContext);
             canvasContext.id(this._cvCanvasId);
-            canvasContext.attr("width", "" + parentFrame.width);
-            canvasContext.attr("height", "" + parentFrame.height);
-            canvasContext.push("canvas tag not supported by your browser");
+            canvasContext.attr('width', '' + parentFrame.width);
+            canvasContext.attr('height', '' + parentFrame.height);
+            canvasContext.push('canvas tag not supported by your browser');
             canvasContext.end();
             return;
         }
@@ -64038,7 +65133,7 @@ tiki.module("text_editor:views/editor",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -64071,8 +65166,6 @@ var SC = require('sproutcore/runtime').SC;
 var GutterView = require('views/gutter').GutterView;
 var LayoutManager = require('controllers/layoutmanager').LayoutManager;
 var ScrollView = require('views/scroll').ScrollView;
-var SyntaxManager = require('syntax_manager:controllers/syntaxmanager').
-    SyntaxManager;
 var TextView = require('views/text').TextView;
 var EditorUndoController = require('controllers/undo').EditorUndoController;
 var EditorSearchController = require('controllers/search').EditorSearchController;
@@ -64093,9 +65186,9 @@ exports.EditorView = SC.View.extend(SC.Border, {
 
         // Measure a large string to work around the fact that width and height
         // are truncated to the nearest integer in the canvas API.
-        var str = "";
+        var str = '';
         for (var i = 0; i < 100; i++) {
-            str += "M";
+            str += 'M';
         }
 
         var width = canvas.measureStringWidth(this.font, str) / 100;
@@ -64114,7 +65207,7 @@ exports.EditorView = SC.View.extend(SC.Border, {
     _fontSizeChanged: function() {
         var fontSize = settings.get('fontsize');
         var fontFace = settings.get('fontface');
-        var font = fontSize + "px " + fontFace;
+        var font = fontSize + 'px ' + fontFace;
         this.set('font', font);
     }.observes(
         'settings:index#settings.fontsize',
@@ -64129,7 +65222,7 @@ exports.EditorView = SC.View.extend(SC.Border, {
      * The font to use for the text view and the gutter view. Typically, this
      * value is set via the font settings.
      */
-    font: "10pt Monaco, Lucida Console, monospace",
+    font: '10pt Monaco, Lucida Console, monospace',
 
     /**
      * @property
@@ -64162,14 +65255,6 @@ exports.EditorView = SC.View.extend(SC.Border, {
      * the child views are created.
      */
     searchController: EditorSearchController,
-
-    /**
-     * @property
-     *
-     * The syntax manager class to use. This field will be instantiated when
-     * the child views are created.
-     */
-    syntaxManager: SyntaxManager,
 
     /**
      * @property
@@ -64245,6 +65330,9 @@ exports.EditorView = SC.View.extend(SC.Border, {
         this.get('searchController').set('textView', textView);
 
         this.set('childViews', [ gutterView, scrollView ]);
+
+        // Compute settings related stuff.
+        this._fontSizeChanged();
     },
 
     init: function() {
@@ -64266,7 +65354,7 @@ tiki.module("text_editor:views/gutter",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -64308,10 +65396,8 @@ var InteriorGutterView = CanvasView.extend({
      * TODO: Convert to SproutCore's theme system.
      */
     theme: {
-        gutterStyle: "#4c4a41",
-        lineNumberColor: "#e5c138",
-        lineNumberFont: "10pt Monaco, Lucida Console, monospace",
-        editorTextFont: "10pt Monaco, Lucida Console, monospace"
+        gutterStyle: '#4c4a41',
+        lineNumberColor: '#e5c138'
     },
 
     _frameChanged: function() {
@@ -64343,7 +65429,7 @@ var InteriorGutterView = CanvasView.extend({
 
         for (var row = range.start.row; row <= endRow; row++) {
             // TODO: breakpoints
-            context.fillText("" + (row + 1), -0.5,
+            context.fillText('' + (row + 1), -0.5,
                 layoutManager.lineRectForRow(row).y + lineAscent - 0.5);
         }
 
@@ -64362,7 +65448,7 @@ exports.GutterView = SC.View.extend({
 
         var layoutManager = this.get('layoutManager');
         var lineCount = layoutManager.get('textLines').length;
-        var lineCountStr = "" + lineCount;
+        var lineCountStr = '' + lineCount;
 
         var characterWidth = layoutManager.get('characterWidth');
         var strWidth = characterWidth * lineCountStr.length;
@@ -64415,7 +65501,7 @@ exports.GutterView = SC.View.extend({
      * @property
      *
      * The amount of padding to leave on the sides of the gutter, given as an
-     * object with "bottom", "left", and "right" properties.
+     * object with 'bottom', 'left', and 'right' properties.
      */
     padding: { bottom: 30, left: 5, right: 10 },
 
@@ -64427,7 +65513,7 @@ exports.GutterView = SC.View.extend({
      * TODO: Convert to a SproutCore theme or plugin.
      */
     theme: {
-        lineNumberFont: "10pt Monaco, Lucida Console, monospace"
+        lineNumberFont: '10pt Monaco, Lucida Console, monospace'
     },
 
     /**
@@ -64471,7 +65557,7 @@ tiki.module("text_editor:views/scroll",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -64501,7 +65587,6 @@ tiki.module("text_editor:views/scroll",function(require,exports,module) {
  * ***** END LICENSE BLOCK ***** */
 
 var SC = require('sproutcore/runtime').SC;
-var BespinScrollerView = require('views/scroller').BespinScrollerView;
 
 exports.ScrollView = SC.ScrollView.extend({
     _containerViewLaidOut: false,
@@ -64511,10 +65596,10 @@ exports.ScrollView = SC.ScrollView.extend({
     borderStyle: SC.BORDER_NONE,
     hasHorizontalScroller: true,
     hasVerticalScroller: true,
-    horizontalScrollerThickness: 24,
-    horizontalScrollerView: BespinScrollerView,
-    verticalScrollerThickness: 24,
-    verticalScrollerView: BespinScrollerView,
+    horizontalScrollerThickness: 17,
+    horizontalScrollerView: SC.ScrollerView,
+    verticalScrollerThickness: 17,
+    verticalScrollerView: SC.ScrollerView,
 
     tile: function() {
         if (!this._containerViewLaidOut) {
@@ -64533,33 +65618,21 @@ exports.ScrollView = SC.ScrollView.extend({
         var vScrollerThickness = this.get('verticalScrollerThickness');
         if (hScrollerVisible) {
             hScroller = this.get('horizontalScrollerView');
-            hScroller.set('scrollerThickness', hScrollerThickness);
-            hScroller.set('padding', {
-                top:    0,
-                bottom: 6,
-                left:   6,
-                right:  6 + vScrollerThickness
-            });
+            hScroller.set('scrollbarThickness', hScrollerThickness);
             hScroller.set('layout', {
                 left:   0,
-                bottom: 0,
-                right:  0,
+                bottom: 6,
+                right:  6 + vScrollerThickness,
                 height: hScrollerThickness
             });
         }
         if (vScrollerVisible) {
             vScroller = this.get('verticalScrollerView');
-            vScroller.set('scrollerThickness', vScrollerThickness);
-            vScroller.set('padding', {
-                left:   0,
-                right:  6,
-                top:    6,
-                bottom: 6 + hScrollerThickness
-            });
+            vScroller.set('scrollbarThickness', vScrollerThickness);
             vScroller.set('layout', {
                 top:    0,
-                right:  0,
-                bottom: 0,
+                right:  6,
+                bottom: 6 + hScrollerThickness,
                 width:  vScrollerThickness
             });
         }
@@ -64577,766 +65650,6 @@ exports.ScrollView = SC.ScrollView.extend({
 
 });
 
-tiki.module("text_editor:views/scroller",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is
- * Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
-
-var SC = require('sproutcore/runtime').SC;
-var CanvasView = require('views/canvas').CanvasView;
-var console = require('bespin:console').console;
-
-var LINE_HEIGHT                 = 15;
-var MINIMUM_HANDLE_SIZE         = 20;
-var NIB_ARROW_PADDING_BEFORE    = 3;
-var NIB_ARROW_PADDING_AFTER     = 5;
-var NIB_LENGTH                  = 15;
-var NIB_PADDING                 = 8;    // 15/2
-
-// The fancy custom Bespin scroll bars.
-var ScrollerCanvasView = CanvasView.extend({
-    classNames: ['bespin-scroller-view'],
-
-    lineHeight: 20,
-
-    _mouseDownScreenPoint: null,
-    _mouseDownValue: null,
-    _isMouseOver: false,
-    _scrollTimer: null,
-    _mouseEventPosition: null,
-    _mouseOverHandle: false,
-
-    // TODO: Make this a real SproutCore theme (i.e. an identifier that gets
-    // prepended to CSS properties), perhaps?
-    theme: {
-        backgroundStyle: "#2A211C",
-        partialNibStyle: "rgba(100, 100, 100, 0.3)",
-        partialNibArrowStyle: "rgba(255, 255, 255, 0.3)",
-        partialNibStrokeStyle: "rgba(150, 150, 150, 0.3)",
-        fullNibStyle: "rgb(100, 100, 100)",
-        fullNibArrowStyle: "rgb(255, 255, 255)",
-        fullNibStrokeStyle: "rgb(150, 150, 150)",
-        scrollTrackFillStyle: "rgba(50, 50, 50, 0.8)",
-        scrollTrackStrokeStyle: "rgb(150, 150, 150)",
-        scrollBarFillStyle: "rgba(0, 0, 0, %a)",
-        scrollBarFillGradientTopStart: "rgba(90, 90, 90, %a)",
-        scrollBarFillGradientTopStop: "rgba(40, 40, 40, %a)",
-        scrollBarFillGradientBottomStart: "rgba(22, 22, 22, %a)",
-        scrollBarFillGradientBottomStop: "rgba(44, 44, 44, %a)"
-    },
-
-    _drawNib: function(ctx) {
-        var theme = this.get('theme');
-        var fillStyle, arrowStyle, strokeStyle;
-        if (this._isHighlighted()) {
-            fillStyle   = theme.fullNibStyle;
-            arrowStyle  = theme.fullNibArrowStyle;
-            strokeStyle = theme.fullNibStrokeStyle;
-        } else {
-            fillStyle   = theme.partialNibStyle;
-            arrowStyle  = theme.partialNibArrowStyle;
-            strokeStyle = theme.partialNibStrokeStyle;
-        }
-
-        var midpoint = Math.floor(NIB_LENGTH / 2);
-
-        ctx.fillStyle = fillStyle;
-        ctx.beginPath();
-        ctx.arc(0, 0, Math.floor(NIB_LENGTH / 2), 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = strokeStyle;
-        ctx.stroke();
-
-        ctx.fillStyle = arrowStyle;
-        ctx.beginPath();
-        ctx.moveTo(0, -midpoint + NIB_ARROW_PADDING_BEFORE);
-        ctx.lineTo(-midpoint + NIB_ARROW_PADDING_BEFORE,
-            midpoint - NIB_ARROW_PADDING_AFTER);
-        ctx.lineTo(midpoint - NIB_ARROW_PADDING_BEFORE,
-            midpoint - NIB_ARROW_PADDING_AFTER);
-        ctx.closePath();
-        ctx.fill();
-    },
-
-    _drawNibs: function(ctx) {
-        var thickness = this._getClientThickness();
-        var parentView = this.get('parentView');
-        var value = parentView.get('value');
-        var maximum = parentView.get('maximum');
-        var highlighted = this._isHighlighted();
-
-        // Starting nib
-        if (highlighted || value !== 0) {
-            ctx.save();
-            ctx.translate(NIB_PADDING, thickness / 2);
-            ctx.rotate(Math.PI * 1.5);
-            ctx.moveTo(0, 0);
-            this._drawNib(ctx);
-            ctx.restore();
-        }
-
-        // Ending nib
-        if (highlighted || value !== maximum) {
-            ctx.save();
-            ctx.translate(this._getClientLength() - NIB_PADDING,
-                thickness / 2);
-            ctx.rotate(Math.PI * 0.5);
-            ctx.moveTo(0, 0);
-            this._drawNib(ctx);
-            ctx.restore();
-        }
-    },
-
-    // Returns the frame of the scroll bar, not counting any padding.
-    _getClientFrame: function() {
-        var frame = this.get('frame');
-        var padding = this.getPath('parentView.padding');
-        return {
-            x:      padding.left,
-            y:      padding.top,
-            width:  frame.width - (padding.left + padding.right),
-            height: frame.height - (padding.top + padding.bottom)
-        };
-    },
-
-    // Returns the length of the scroll bar, not counting any padding. Equal to
-    // the width or height of the client frame, depending on the layout
-    // direction.
-    _getClientLength: function() {
-        var clientFrame = this._getClientFrame();
-        switch (this.getPath('parentView.layoutDirection')) {
-        case SC.LAYOUT_HORIZONTAL:
-            return clientFrame.width;
-        case SC.LAYOUT_VERTICAL:
-            return clientFrame.height;
-        default:
-            console.error("unknown layout direction");
-            return null;
-        }
-    },
-
-    // Returns the thickness of the scroll bar, not counting any padding.
-    _getClientThickness: function() {
-        var parentView = this.get('parentView');
-        var padding = parentView.get('padding');
-        var scrollerThickness = parentView.get('scrollerThickness');
-
-        switch (parentView.get('layoutDirection')) {
-        case SC.LAYOUT_VERTICAL:
-            return scrollerThickness - (padding.left + padding.right);
-        case SC.LAYOUT_HORIZONTAL:
-            return scrollerThickness - (padding.top + padding.bottom);
-        default:
-            console.error("unknown layout direction");
-            return null;
-        }
-    }.property(),
-
-    // The length of the scroll bar, counting the padding. Equal to frame.width
-    // or frame.height, depending on the layout direction of the bar.
-    // Read-only.
-    _getFrameLength: function() {
-        var frame = this.get('frame');
-        switch (this.getPath('parentView.layoutDirection')) {
-        case SC.LAYOUT_HORIZONTAL:
-            return frame.width;
-        case SC.LAYOUT_VERTICAL:
-            return frame.height;
-        default:
-            console.error("unknown layout direction");
-            return null;
-        }
-    },
-
-    // The dimensions of the gutter (the middle area between the buttons, which
-    // contains the handle or knob).
-    _getGutterFrame: function() {
-        var clientFrame = this._getClientFrame();
-        var thickness = this._getClientThickness();
-        switch (this.getPath('parentView.layoutDirection')) {
-        case SC.LAYOUT_VERTICAL:
-            return {
-                x:      clientFrame.x,
-                y:      clientFrame.y + NIB_LENGTH,
-                width:  thickness,
-                height: Math.max(0, clientFrame.height - 2*NIB_LENGTH)
-            };
-        case SC.LAYOUT_HORIZONTAL:
-            return {
-                x:      clientFrame.x + NIB_LENGTH,
-                y:      clientFrame.y,
-                width:  Math.max(0, clientFrame.width - 2*NIB_LENGTH),
-                height: thickness
-            };
-        default:
-            console.error("unknown layout direction");
-            return null;
-        }
-    },
-
-    // The length of the gutter, equal to gutterFrame.width or
-    // gutterFrame.height depending on the scroll bar's layout direction.
-    _getGutterLength: function() {
-        var gutterFrame = this._getGutterFrame();
-        var gutterLength;
-        switch (this.getPath('parentView.layoutDirection')) {
-        case SC.LAYOUT_HORIZONTAL:
-            gutterLength = gutterFrame.width;
-            break;
-        case SC.LAYOUT_VERTICAL:
-            gutterLength = gutterFrame.height;
-            break;
-        default:
-            console.error("unknown layout direction");
-            break;
-        }
-        return gutterLength;
-    },
-
-    // Returns the dimensions of the handle or knob.
-    _getHandleFrame: function() {
-        var gutterFrame = this._getGutterFrame();
-        var handleOffset = this._getHandleOffset();
-        var handleLength = this._getHandleLength();
-        switch (this.getPath('parentView.layoutDirection')) {
-        case SC.LAYOUT_VERTICAL:
-            return {
-                x:      gutterFrame.x,
-                y:      gutterFrame.y + handleOffset,
-                width:  gutterFrame.width,
-                height: handleLength
-            };
-        case SC.LAYOUT_HORIZONTAL:
-            return {
-                x:      gutterFrame.x + handleOffset,
-                y:      gutterFrame.y,
-                width:  handleLength,
-                height: gutterFrame.height
-            };
-        }
-    },
-
-    // Returns the length of the handle or knob.
-    _getHandleLength: function() {
-        var gutterLength = this._getGutterLength();
-        var proportion = this.getPath('parentView.proportion');
-        return Math.max(gutterLength * proportion, MINIMUM_HANDLE_SIZE);
-    },
-
-    // Returns the starting offset of the handle or knob.
-    _getHandleOffset: function() {
-        var parentView = this.get('parentView');
-        var maximum = parentView.get('maximum');
-        if (maximum === 0) {
-            return 0;
-        }
-
-        var gutterLength = this._getGutterLength();
-        var handleLength = this._getHandleLength();
-        var emptyGutterLength = gutterLength - handleLength;
-
-        var value = parentView.get('value');
-
-        return emptyGutterLength * value / maximum;
-    },
-
-    // Determines whether the scroll bar is highlighted.
-    _isHighlighted: function() {
-        return this._isMouseOver === true ||
-            this._mouseDownScreenPoint !== null;
-    },
-
-    _segmentForMouseEvent: function(evt) {
-        var point = this.convertFrameFromView({ x: evt.pageX, y: evt.pageY });
-        var clientFrame = this._getClientFrame();
-        var padding = this.getPath('parentView.padding');
-
-        if (!SC.pointInRect(point, clientFrame)) {
-            return null;
-        }
-
-        var layoutDirection = this.getPath('parentView.layoutDirection');
-        switch (layoutDirection) {
-        case SC.LAYOUT_HORIZONTAL:
-            if ((point.x - padding.left) < NIB_LENGTH) {
-                return 'nib-start';
-            } else if (point.x >= clientFrame.width - NIB_LENGTH) {
-                return 'nib-end';
-            }
-            break;
-        case SC.LAYOUT_VERTICAL:
-            if ((point.y - padding.top) < NIB_LENGTH) {
-                return 'nib-start';
-            } else if (point.y >= clientFrame.height - NIB_LENGTH) {
-                return 'nib-end';
-            }
-            break;
-        default:
-            console.error("unknown layout direction");
-            break;
-        }
-
-        var handleFrame = this._getHandleFrame();
-        if (SC.pointInRect(point, handleFrame)) {
-            return 'handle';
-        }
-
-        switch (layoutDirection) {
-        case SC.LAYOUT_HORIZONTAL:
-            if (point.x < handleFrame.x) {
-                return 'gutter-before';
-            } else if (point.x >= handleFrame.x + handleFrame.width) {
-                return 'gutter-after';
-            }
-            break;
-        case SC.LAYOUT_VERTICAL:
-            if (point.y < handleFrame.y) {
-                return 'gutter-before';
-            } else if (point.y >= handleFrame.y + handleFrame.height) {
-                return 'gutter-after';
-            }
-            break;
-        default:
-            console.error("unknown layout direction");
-            break;
-        }
-
-        console.error("_segmentForMouseEvent: point ", point,
-            " outside view with handle frame ", handleFrame,
-            " and client frame ", clientFrame);
-        return null;
-    },
-
-    /**
-     * Adjusts the canvas view's frame to match the parent container's frame.
-     */
-    adjustFrame: function() {
-        var parentFrame = this.getPath('parentView.frame');
-        this.set('layout', {
-            left:   0,
-            top:    0,
-            width:  parentFrame.width,
-            height: parentFrame.height
-        });
-    },
-
-    drawRect: function(rect, ctx) {
-        var alpha = (ctx.globalAlpha) ? ctx.globalAlpha : 1;
-        var theme = this.get('theme');
-        var highlighted = this._isHighlighted();
-
-        var frame = this.get('frame');
-        ctx.clearRect(0, 0, frame.width, frame.height);
-
-        // Begin master drawing context
-        ctx.save();
-
-        // Translate so that we're only drawing in the padding.
-        var parentView = this.get('parentView');
-        var padding = parentView.get('padding');
-        ctx.translate(padding.left, padding.top);
-
-        var handleFrame = this._getHandleFrame();
-        var gutterLength = this._getGutterLength();
-        var thickness = this._getClientThickness();
-        var halfThickness = thickness / 2;
-
-        var layoutDirection = parentView.get('layoutDirection');
-        var handleOffset = this._getHandleOffset() + NIB_LENGTH;
-        var handleLength = this._getHandleLength();
-
-        if (layoutDirection === SC.LAYOUT_VERTICAL) {
-            // The rest of the drawing code assumes the scroll bar is
-            // horizontal. Create that fiction by installing a 90 degree
-            // rotation.
-            ctx.translate(thickness + 1, 0);
-            ctx.rotate(Math.PI * 0.5);
-        }
-
-        if (gutterLength <= handleLength) {
-            return; // Don't display the scroll bar.
-        }
-
-        if (!highlighted) {
-            ctx.globalAlpha = 0.3;
-        } else {
-            // Draw the scroll track rectangle.
-            var clientLength = this._getClientLength();
-            ctx.fillStyle = theme.scrollTrackFillStyle;
-            ctx.fillRect(NIB_PADDING + 0.5, 0.5,
-                clientLength - 2*NIB_PADDING, thickness - 1);
-            ctx.strokeStyle = theme.scrollTrackStrokeStyle;
-            ctx.strokeRect(NIB_PADDING + 0.5, 0.5,
-                clientLength - 2*NIB_PADDING, thickness - 1);
-        }
-
-        var buildHandlePath = function() {
-            ctx.beginPath();
-            ctx.arc(handleOffset + halfThickness + 0.5,                 // x
-                halfThickness,                                          // y
-                halfThickness - 0.5, Math.PI / 2, 3 * Math.PI / 2, false);
-            ctx.arc(handleOffset + handleLength - halfThickness - 0.5,  // x
-                halfThickness,                                          // y
-                halfThickness - 0.5, 3 * Math.PI / 2, Math.PI / 2, false);
-            ctx.lineTo(handleOffset + halfThickness + 0.5, thickness - 0.5);
-            ctx.closePath();
-        };
-        buildHandlePath();
-
-        // Paint the interior of the handle path.
-        var gradient = ctx.createLinearGradient(handleOffset, 0, handleOffset,
-            thickness);
-        gradient.addColorStop(0,
-            theme.scrollBarFillGradientTopStart.replace(/%a/, alpha));
-        gradient.addColorStop(0.4,
-            theme.scrollBarFillGradientTopStop.replace(/%a/, alpha));
-        gradient.addColorStop(0.41,
-            theme.scrollBarFillStyle.replace(/%a/, alpha));
-        gradient.addColorStop(0.8,
-            theme.scrollBarFillGradientBottomStart.replace(/%a/, alpha));
-        gradient.addColorStop(1,
-            theme.scrollBarFillGradientBottomStop.replace(/%a/, alpha));
-        ctx.fillStyle = gradient;
-        ctx.fill();
-
-        // Begin handle shine edge context
-        ctx.save();
-        ctx.clip();
-
-        // Draw the little shines in the handle.
-        ctx.fillStyle = theme.scrollBarFillStyle.replace(/%a/, alpha);
-        ctx.beginPath();
-        ctx.moveTo(handleOffset + halfThickness * 0.4, halfThickness * 0.6);
-        ctx.lineTo(handleOffset + halfThickness * 0.9, thickness * 0.4);
-        ctx.lineTo(handleOffset, thickness * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(handleOffset + handleLength - (halfThickness * 0.4),
-            0 + (halfThickness * 0.6));
-        ctx.lineTo(handleOffset + handleLength - (halfThickness * 0.9),
-            0 + (thickness * 0.4));
-        ctx.lineTo(handleOffset + handleLength, 0 + (thickness * 0.4));
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.restore();
-        // End handle border context
-
-        // Begin handle outline context
-        ctx.save();
-        buildHandlePath();
-        ctx.strokeStyle = theme.scrollTrackStrokeStyle;
-        ctx.stroke();
-        ctx.restore();
-        // End handle outline context
-
-        if (!highlighted) {
-            ctx.globalAlpha = 1.0;
-        }
-
-        this._drawNibs(ctx);
-
-        ctx.restore();
-        // End master drawing context
-    },
-
-    _repeatAction: function(method, interval) {
-        var repeat = method();
-        if (repeat !== false) {
-            this._scrollTimer = SC.Timer.schedule({
-                target: this,
-                action: function() { this._repeatAction(method, 100); },
-                interval: interval
-            });
-        }
-    },
-
-    _scrollByDelta: function(delta) {
-        var parentView = this.get('parentView');
-        var value = parentView.get('value');
-        parentView.set('value', value + delta);
-    },
-
-    _scrollUpOneLine: function() {
-        this._scrollByDelta(-this.get('lineHeight'));
-        return true;
-    },
-
-    _scrollDownOneLine: function() {
-        this._scrollByDelta(this.get('lineHeight'));
-        return true;
-    },
-
-    /**
-     * Scrolls the page depending on the last mouse position. Scrolling is only
-     * performed if the mouse is on the segment gutter-before or -after.
-     */
-    _scrollPage: function() {
-        switch (this._segmentForMouseEvent(this._mouseEventPosition)) {
-            case 'gutter-before':
-                this._scrollByDelta(this._getGutterLength() * -1);
-            break;
-            case 'gutter-after':
-                this._scrollByDelta(this._getGutterLength());
-            break;
-            case null:
-                // The mouse is outside of the scroller. Just wait, until it
-                // comes back in.
-            break;
-            default:
-                // Do not continue repeating this function.
-                return false;
-            break;
-        }
-
-        return true;
-    },
-
-    mouseDown: function(evt) {
-        this._mouseEventPosition = evt;
-        this._mouseOverHandle = false;
-
-        var parentView = this.get('parentView');
-        var value = parentView.get('value');
-        var gutterLength = this._getGutterLength();
-
-        switch (this._segmentForMouseEvent(evt)) {
-        case 'nib-start':
-            this._repeatAction(this._scrollUpOneLine.bind(this), 500);
-            break;
-        case 'nib-end':
-            this._repeatAction(this._scrollDownOneLine.bind(this), 500);
-            break;
-        case 'gutter-before':
-            this._repeatAction(this._scrollPage.bind(this), 500);
-            break;
-        case 'gutter-after':
-            this._repeatAction(this._scrollPage.bind(this), 500);
-            break;
-        case 'handle':
-            break;
-        default:
-            console.error("_segmentForMouseEvent returned an unknown value");
-            break;
-        }
-
-        // The _mouseDownScreenPoint value might be needed although the segment
-        // was not the handle at the moment.
-        switch (parentView.get('layoutDirection')) {
-        case SC.LAYOUT_HORIZONTAL:
-            this._mouseDownScreenPoint = evt.pageX;
-            break;
-        case SC.LAYOUT_VERTICAL:
-            this._mouseDownScreenPoint = evt.pageY;
-            break;
-        default:
-            console.error("unknown layout direction");
-            break;
-        }
-    },
-
-    mouseDragged: function(evt) {
-        var parentView = this.get('parentView');
-
-        // Handle the segments. If the current segment is the handle or
-        // nothing, then drag the handle around (as null = mouse outside of
-        // scrollbar)
-        var segment = this._segmentForMouseEvent(evt);
-        if (segment == 'handle' || this._mouseOverHandle === true) {
-            this._mouseOverHandle = true;
-            if (this._scrollTimer !== null) {
-                this._scrollTimer.invalidate();
-                this._scrollTimer = null;
-            }
-
-            var eventDistance;
-            switch (parentView.get('layoutDirection')) {
-                case SC.LAYOUT_HORIZONTAL:
-                    eventDistance = evt.pageX;
-                    break;
-                case SC.LAYOUT_VERTICAL:
-                    eventDistance = evt.pageY;
-                    break;
-                default:
-                    console.error("unknown layout direction");
-                    break;
-            }
-
-            var eventDelta = eventDistance - this._mouseDownScreenPoint;
-
-            var maximum = parentView.get('maximum');
-            var oldValue = parentView.get('value');
-            var gutterLength = this._getGutterLength();
-            var handleLength = this._getHandleLength();
-            var emptyGutterLength = gutterLength - handleLength;
-            var valueDelta = maximum * eventDelta / emptyGutterLength;
-            parentView.set('value', oldValue + valueDelta);
-
-            this._mouseDownScreenPoint = eventDistance;
-        }
-
-        this._mouseEventPosition = evt;
-    },
-
-    mouseEntered: function(evt) {
-        this._isMouseOver = true;
-        this.setNeedsDisplay();
-    },
-
-    mouseExited: function(evt) {
-        this._isMouseOver = false;
-        this.setNeedsDisplay();
-    },
-
-    mouseUp: function(evt) {
-        this._mouseDownScreenPoint = null;
-        this._mouseDownValue = null;
-        if (this._scrollTimer) {
-            this._scrollTimer.invalidate();
-            this._scrollTimer = null;
-        }
-        this.setNeedsDisplay();
-    },
-
-    mouseWheel: function(evt) {
-        var parentView = this.get('parentView');
-
-        var delta;
-        switch (parentView.get('layoutDirection')) {
-        case SC.LAYOUT_HORIZONTAL:
-            delta = evt.wheelDeltaX;
-            break;
-        case SC.LAYOUT_VERTICAL:
-            delta = evt.wheelDeltaY;
-            break;
-        default:
-            console.error("unknown layout direction");
-            return;
-        }
-
-        parentView.set('value', parentView.get('value') + 2*delta);
-    }
-});
-
-/**
- * @class
- *
- * A canvas-based scroller view.
- */
-exports.BespinScrollerView = SC.View.extend({
-    _scrollerCanvasView: null,
-
-    _frameChanged: function() {
-        this._scrollerCanvasView.adjustFrame();
-    }.observes('frame'),
-
-    _maximumChanged: function() {
-        this._scrollerCanvasView.adjustFrame();
-    }.observes('maximum'),
-
-    _valueChanged: function() {
-        var scrollerCanvasView = this._scrollerCanvasView;
-        var maximumValue = this.get('maximum');
-
-        var value = this.get('value');
-        if (value < 0) {
-            this.set('value', 0);
-        } else if (value > maximumValue) {
-            this.set('value', maximumValue);
-        }
-
-        scrollerCanvasView.setNeedsDisplay();
-    }.observes('value'),
-
-    /**
-     * @property
-     * Specifies the direction of the scroll bar: one of SC.LAYOUT_HORIZONTAL
-     * or SC.LAYOUT_VERTICAL.
-     *
-     * Changes to this value after the view has been created have no effect.
-     */
-    layoutDirection: SC.LAYOUT_VERTICAL,
-
-    /**
-     * @property{Number}
-     * The maximum value for the scroll bar.
-     *
-     * TODO: When set to a value less than the width or height of the knob, the
-     * scroll bar is disabled.
-     *
-     */
-    maximum: 0,
-
-    /**
-     * @property
-     * The dimensions of transparent space inside the frame, given as an object
-     * with 'left', 'bottom', 'top', and 'right' properties.
-     *
-     * Note that the scrollerThickness property includes the padding on the
-     * sides of the bar.
-     */
-    padding: { left: 0, bottom: 0, top: 0, right: 0 },
-
-    /**
-     * @property
-     * The thickness of this scroll bar. The default is
-     * SC.NATURAL_SCROLLER_THICKNESS.
-     */
-    scrollerThickness: SC.NATURAL_SCROLLER_THICKNESS,
-
-    /**
-     * @property
-     * The current position that the scroll bar is scrolled to.
-     */
-    value: 0,
-
-    createChildViews: function() {
-        var scrollerCanvasView = this.createChildView(ScrollerCanvasView);
-        scrollerCanvasView.adjustFrame();
-        this._scrollerCanvasView = scrollerCanvasView;
-
-        this.set('childViews', [ scrollerCanvasView ]);
-    }
-});
-
-
-});
-
 tiki.module("text_editor:views/text",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -65346,7 +65659,7 @@ tiki.module("text_editor:views/text",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -65392,6 +65705,7 @@ var DEBUG_TEXT_RANGES = false;
 exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
     _dragPoint: null,
     _dragTimer: null,
+    _enclosingScrollView: null,
     _inChangeGroup: false,
     _insertionPointBlinkTimer: null,
     _insertionPointVisible: true,
@@ -65407,6 +65721,8 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
 
     _selectedRange: null,
     _selectedRangeEndVirtual: null,
+    
+    classNames: ['text_editor'],
 
     _drag: function() {
         var point = this.convertFrameFromView(this._dragPoint);
@@ -65471,12 +65787,12 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
                 continue;
             }
 
-            // Clamp the start column and end column to fit within the line
+            // Clamp the start col and end col to fit within the line
             // text.
             var characters = textLine.characters;
             var length = characters.length;
-            var endColumn = Math.min(rangeEnd.column, length);
-            var startColumn = rangeStart.column;
+            var endColumn = Math.min(rangeEnd.col, length);
+            var startColumn = rangeStart.col;
             if (startColumn >= length) {
                 continue;
             }
@@ -65489,20 +65805,20 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
             }
 
             // And finally draw the line.
-            var column = colorRanges[colorIndex].start;
-            while (column !== null && column < endColumn) {
+            var col = colorRanges[colorIndex].start;
+            while (col !== null && col < endColumn) {
                 var colorRange = colorRanges[colorIndex];
                 var colorRangeEnd = colorRange.end;
                 context.fillStyle = colorRange.color;
 
                 var characterRect = layoutManager.characterRectForPosition({
                     row:    row,
-                    column: column
+                    col: col
                 });
 
                 var snippet = colorRangeEnd === null ?
-                    characters.substring(column) :
-                    characters.substring(column, colorRangeEnd);
+                    characters.substring(col) :
+                    characters.substring(col, colorRangeEnd);
                 context.fillText(snippet, characterRect.x,
                     characterRect.y + lineAscent);
 
@@ -65514,7 +65830,7 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
                         characterRect.height - 1);
                 }
 
-                column = colorRangeEnd;
+                col = colorRangeEnd;
                 colorIndex++;
             }
         }
@@ -65583,17 +65899,25 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         this.setNeedsDisplayInRect(adjustRect(rect));
     },
 
+    _isReadOnly: function() {
+        return this.getPath('layoutManager.textStorage.readOnly');
+    },
+
     _keymappingChanged: function() {
         this._keyBuffer = '';
         this._keyState = 'start';
     },
+
+    _parentViewChanged: function() {
+        this._updateEnclosingScrollView();
+    }.observes('parentView'),
 
     _performVerticalKeyboardSelection: function(offset) {
         var textStorage = this.getPath('layoutManager.textStorage');
         var oldPosition = this._selectedRangeEndVirtual !== null ?
             this._selectedRangeEndVirtual : this._selectedRange.end;
         var newPosition = Range.addPositions(oldPosition,
-            { row: offset, column: 0 });
+            { row: offset, col: 0 });
 
         this.moveCursorTo(newPosition, true, true);
     },
@@ -65632,14 +65956,13 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         var startLine = textLines[newStartRow];
         var endLine = textLines[newEndRow];
         this.setSelection({
-            start:  {
-                row:    newStartRow,
-                column: Math.min(range.start.column,
-                            startLine.characters.length)
+            start: {
+                row: newStartRow,
+                col: Math.min(range.start.col, startLine.characters.length)
             },
-            end:    {
-                row:    newEndRow,
-                column: Math.min(range.end.column, endLine.characters.length)
+            end: {
+                row: newEndRow,
+                col: Math.min(range.end.col, endLine.characters.length)
             }
         });
     },
@@ -65657,27 +65980,18 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
     },
 
     _scrollPage: function(scrollUp) {
-        var scrollable = this._scrollView();
+        var scrollView = this._enclosingScrollView;
+        if (SC.none(scrollView)) {
+            return;
+        }
+
         var visibleFrame = this.get('clippingFrame');
-        scrollable.scrollTo(visibleFrame.x, visibleFrame.y +
+        scrollView.scrollTo(visibleFrame.x, visibleFrame.y +
             (visibleFrame.height + this._lineAscent) * (scrollUp ? -1 : 1));
     },
 
-    /**
-     * @private
-     *
-     * Returns the parent scroll view, if one exists.
-     */
-    _scrollView: function() {
-        var view = this.get('parentView');
-        while (!SC.none(view) && !view.get('isScrollable')) {
-            view = view.get('parentView');
-        }
-        return view;
-    },
-
     _scrollWhileDragging: function() {
-        var scrollView = this._scrollView();
+        var scrollView = this._enclosingScrollView;
         if (SC.none(scrollView)) {
             return;
         }
@@ -65692,12 +66006,21 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         this._drag();
     },
 
+    _scrolled: function() {
+        var scrollView = this._enclosingScrollView;
+        var x = scrollView.get('horizontalScrollOffset');
+        var y = scrollView.get('verticalScrollOffset');
+        this.notifyDelegates('textViewWasScrolled', { x: x, y: y });
+
+        this._updateSyntax(null);
+    },
+
     // Returns the character closest to the given point, obeying the selection
     // rules (including the partialFraction field).
     _selectionPositionForPoint: function(point) {
         var position = this.get('layoutManager').characterAtPoint(point);
         return position.partialFraction < 0.5 ? position :
-            Range.addPositions(position, { row: 0, column: 1 });
+            Range.addPositions(position, { row: 0, col: 1 });
     },
 
     _syntaxManagerUpdatedSyntaxForRows: function(startRow, endRow) {
@@ -65709,9 +66032,35 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         layoutManager.updateTextRows(startRow, endRow);
 
         layoutManager.rectsForRange({
-                start:  { row: startRow,    column: 0 },
-                end:    { row: endRow,      column: 0 }
+                start:  { row: startRow, col: 0 },
+                end:    { row: endRow,   col: 0 }
             }).forEach(this.setNeedsDisplayInRect, this);
+    },
+
+    // Updates the _enclosingScrollView instance member and (re-)registers
+    // observers appropriately.
+    _updateEnclosingScrollView: function() {
+        if (!SC.none(this._enclosingScrollView)) {
+            var enclosingScrollView = this._enclosingScrollView;
+            enclosingScrollView.removeObserver('horizontalScrollOffset', this,
+                this._scrolled);
+            enclosingScrollView.removeObserver('verticalScrollOffset', this,
+                this._scrolled);
+        }
+
+        var view = this.get('parentView');
+        while (!SC.none(view) && !view.get('isScrollable')) {
+            view = view.get('parentView');
+        }
+
+        this._enclosingScrollView = view;
+
+        if (SC.none(view)) {
+            return;
+        }
+
+        view.addObserver('horizontalScrollOffset', this, this._scrolled);
+        view.addObserver('verticalScrollOffset', this, this._scrolled);
     },
 
     // Instructs the syntax manager to begin highlighting from the given row to
@@ -65778,12 +66127,12 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
      * TODO: Convert to a SproutCore theme. This is super ugly.
      */
     theme: {
-        backgroundStyle: "#2a211c",
-        cursorStyle: "#879aff",
-        editorSelectedTextColor: "rgb(240, 240, 240)",
-        editorSelectedTextBackground: "#526da5",
-        unfocusedCursorStrokeStyle: "#ff0033",
-        unfocusedCursorFillStyle: "#73171e"
+        backgroundStyle: '#2a211c',
+        cursorStyle: '#879aff',
+        editorSelectedTextColor: 'rgb(240, 240, 240)',
+        editorSelectedTextBackground: '#526da5',
+        unfocusedCursorStrokeStyle: '#ff0033',
+        unfocusedCursorFillStyle: '#73171e'
     },
 
     /**
@@ -65847,7 +66196,7 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
      * empty string if none are selected.
      */
     getSelectedCharacters: function() {
-        return this._rangeIsInsertionPoint(this._selectedRange) ? "" :
+        return this._rangeIsInsertionPoint(this._selectedRange) ? '' :
             this.getPath('layoutManager.textStorage').getCharacters(Range.
             normalizeRange(this._selectedRange));
     },
@@ -65856,7 +66205,7 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
      * Returns the currently selected range.
      *
      * @param raw If true, the direction of the selection is preserved: the
-     *            "start" field will be the selection origin, and the "end"
+     *            'start' field will be the selection origin, and the 'end'
      *            field will always be the selection tail.
      */
     getSelectedRange: function(raw) {
@@ -65895,12 +66244,14 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
 
         this._invalidRange = null;
         this._selectedRange =
-            { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } };
+            { start: { row: 0, col: 0 }, end: { row: 0, col: 0 } };
 
         // Allow the user to change the fields of the padding object without
         // screwing up the prototype.
         this.set('padding', SC.clone(this.get('padding')));
         this.get('layoutManager').addDelegate(this);
+
+        this._updateEnclosingScrollView();
 
         this._resize();
     },
@@ -65908,8 +66259,15 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
     /**
      * Replaces the selection with the given text and updates the selection
      * boundaries appropriately.
+     *
+     * @return True if the text view was successfully updated; false if the
+     *     change couldn't be made because the text view is read-only.
      */
     insertText: function(text) {
+        if (this._isReadOnly()) {
+            return false;
+        }
+
         this.groupChanges(function() {
             var textStorage = this.getPath('layoutManager.textStorage');
             var range = Range.normalizeRange(this._selectedRange);
@@ -65918,21 +66276,23 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
 
             // Update the selection to point immediately after the inserted
             // text.
-            var lines = text.split("\n");
+            var lines = text.split('\n');
 
             var destPosition;
             if (lines.length > 1) {
                 destPosition = {
                     row:    range.start.row + lines.length - 1,
-                    column: lines[lines.length - 1].length
+                    col: lines[lines.length - 1].length
                 };
             } else {
                 destPosition = Range.addPositions(range.start,
-                    { row: 0, column: text.length });
+                    { row: 0, col: text.length });
             }
 
             this.moveCursorTo(destPosition);
         }.bind(this));
+
+        return true;
     },
 
     /**
@@ -65941,7 +66301,7 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
      * TODO: Should this be moved out of the text view?
      */
     isDelimiter: function(character) {
-        return "\"',;.!~@#$%^&*?[]<>:/\\-+ \t".indexOf(character) !== -1;
+        return '"\',;.!~@#$%^&*?[]<>():/\\-+ \t'.indexOf(character) !== -1;
     },
 
     keyDown: function(evt) {
@@ -66003,8 +66363,8 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
                 return true;
             }
 
-            pos.column -= (pos.column == line.length ? 1 : 0);
-            var skipOnDelimiter = !this.isDelimiter(line[pos.column]);
+            pos.col -= (pos.col == line.length ? 1 : 0);
+            var skipOnDelimiter = !this.isDelimiter(line[pos.col]);
 
             var thisTextView = this;
             var searchForDelimiter = function(pos, dir) {
@@ -66017,11 +66377,11 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
                 return pos + (dir == 1 ? 0 : 1);
             };
 
-            var columnFrom = searchForDelimiter(pos.column, -1);
-            var columnTo   = searchForDelimiter(pos.column, 1);
+            var colFrom = searchForDelimiter(pos.col, -1);
+            var colTo   = searchForDelimiter(pos.col, 1);
 
-            this.moveCursorTo({ row: pos.row, column: columnFrom });
-            this.moveCursorTo({ row: pos.row, column: columnTo }, true);
+            this.moveCursorTo({ row: pos.row, col: colFrom });
+            this.moveCursorTo({ row: pos.row, col: colTo }, true);
 
             break;
 
@@ -66032,11 +66392,11 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
             this.setSelection({
                 start: {
                     row: pos.row,
-                    column: 0
+                    col: 0
                 },
                 end: {
                     row: pos.row,
-                    column: lines[pos.row].length
+                    col: lines[pos.row].length
                 }
             });
             break;
@@ -66090,13 +66450,13 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
 
         if (virtual) {
             var lineCount = textStorage.get('lines').length;
-            var row = position.row, column = position.column;
+            var row = position.row, col = position.col;
             if (row > 0 && row < lineCount) {
                 this._selectedRangeEndVirtual = position;
             } else {
                 this._selectedRangeEndVirtual = {
-                    row:    row < 1 ? 0 : lineCount - 1,
-                    column: column
+                    row: row < 1 ? 0 : lineCount - 1,
+                    col: col
                 };
             }
         } else {
@@ -66114,9 +66474,9 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
             position = range.end;
         } else {
             // Yes, this is actually what Cocoa does... weird, huh?
-            position = { row: range.end.row, column: range.start.column };
+            position = { row: range.end.row, col: range.start.col };
         }
-        position = Range.addPositions(position, { row: 1, column: 0 });
+        position = Range.addPositions(position, { row: 1, col: 0 });
 
         this.moveCursorTo(position, false, true);
     },
@@ -66145,8 +66505,8 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         var range = Range.normalizeRange(this._getVirtualSelection(true));
         position = Range.addPositions({
             row: range.start.row,
-            column: this._getVirtualSelection().end.column
-        }, { row: -1, column: 0 });
+            col: this._getVirtualSelection().end.col
+        }, { row: -1, col: 0 });
 
         this.moveCursorTo(position, false, true);
     },
@@ -66159,8 +66519,22 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
     /**
      * As an undoable action, replaces the characters within the old range with
      * the supplied characters.
+     *
+     * TODO: Factor this out into the undo controller. The fact that commands
+     * have to go through the view in order to make undoable changes is
+     * counterintuitive.
+     *
+     * @param oldRange{Range}    The range of characters to modify.
+     * @param characters{string} The string to replace the characters with.
+     *
+     * @return True if the changes were successfully made; false if the changes
+     *     couldn't be made because the editor is read-only.
      */
     replaceCharacters: function(oldRange, characters) {
+        if (this._isReadOnly()) {
+            return false;
+        }
+
         this.groupChanges(function() {
             oldRange = Range.normalizeRange(oldRange);
             this.notifyDelegates('textViewWillReplaceRange', oldRange);
@@ -66170,16 +66544,24 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
             this.notifyDelegates('textViewReplacedCharacters', oldRange,
                 characters);
         }.bind(this));
+
+        return true;
     },
 
     /**
      * Performs a delete-backward or delete-forward operation.
      *
-     * @param isBackspace If true, the deletion proceeds backward (as if the
-     *                    backspace key were pressed); otherwise, deletion
-     *                    proceeds forward.
+     * @param isBackspace{boolean} If true, the deletion proceeds backward (as if
+     *     the backspace key were pressed); otherwise, deletion proceeds forward.
+     *
+     * @return True if the operation was successfully performed; false if the
+     *     operation failed because the editor is read-only.
      */
     performBackspaceOrDelete: function(isBackspace) {
+        if (this._isReadOnly()) {
+            return false;
+        }
+
         var model = this.getPath('layoutManager.textStorage');
 
         var lines = model.get('lines');
@@ -66189,14 +66571,14 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
             if (isBackspace) {
                 var start = range.start;
                 var tabstop = settings.get('tabstop');
-                var row = start.row, column = start.column;
+                var row = start.row, col = start.col;
                 var line = lines[row];
 
-                if (column > 0 && column % tabstop === 0 &&
-                        new RegExp("^\\s{" + column + "}").test(line)) {
-                    // "Smart tab" behavior: delete a tab worth of whitespace.
+                if (col > 0 && col % tabstop === 0 &&
+                        new RegExp('^\\s{' + col + '}').test(line)) {
+                    // 'Smart tab' behavior: delete a tab worth of whitespace.
                     range = {
-                        start:  { row: row, column: column - tabstop },
+                        start:  { row: row, col: col - tabstop },
                         end:    range.end
                     };
                 } else {
@@ -66216,12 +66598,14 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         }
 
         this.groupChanges(function() {
-            this.replaceCharacters(range, "");
+            this.replaceCharacters(range, '');
 
             // Position the insertion point at the start of all the ranges that
             // were just deleted.
             this.moveCursorTo(range.start);
         }.bind(this));
+
+        return true;
     },
 
     /** Removes all buffered keys. */
@@ -66245,15 +66629,23 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
     },
 
     /**
+     * If this view is in a scrollable container, scrolls to the given point (in
+     * pixels).
+     */
+    scrollTo: function(point) {
+        var scrollView = this._enclosingScrollView;
+        if (SC.none(scrollView)) {
+            return;
+        }
+
+        scrollView.scrollTo(point);
+    },
+
+    /**
      * If this view is in a scrollable container, scrolls to the given
      * character position.
      */
     scrollToPosition: function(position) {
-        var scrollable = this._scrollView();
-        if (SC.none(scrollable)) {
-            return;
-        }
-
         var rect = this.get('layoutManager').
             characterRectForPosition(position);
         var rectX = rect.x, rectY = rect.y;
@@ -66266,12 +66658,21 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         var width = frame.width - padding.right;
         var height = frame.height - padding.bottom;
 
-        scrollable.scrollTo(rectX >= frameX &&
-            rectX + rectWidth < frameX + width ?
-            frameX : rectX - width / 2 + rectWidth / 2,
-            rectY >= frameY &&
-            rectY + rectHeight < frameY + height ?
-            frameY : rectY - height / 2 + rectHeight / 2);
+        var x;
+        if (rectX >= frameX && rectX + rectWidth < frameX + width) {
+            x = frameX;
+        } else {
+            x = rectX - width / 2 + rectWidth / 2;
+        }
+
+        var y;
+        if (rectY >= frameY && rectY + rectHeight < frameY + height) {
+            y = frameY;
+        } else {
+            y = rectY - height / 2 + rectHeight / 2;
+        }
+
+        this.scrollTo({ x: x, y: y });
     },
 
     /**
@@ -66281,8 +66682,8 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         var lines = this.getPath('layoutManager.textStorage.lines');
         var lastRow = lines.length - 1;
         this.setSelection({
-            start:  { row: 0, column: 0 },
-            end:    { row: lastRow, column: lines[lastRow].length }
+            start:  { row: 0, col: 0 },
+            end:    { row: lastRow, col: lines[lastRow].length }
         });
     },
 
@@ -66321,16 +66722,21 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
         // Set the new selection and invalidate it.
         this._selectedRange = textStorage.clampRange(newRange);
         this._invalidateSelection();
+        this.notifyDelegates('textViewSelectionChanged', this._selectedRange);
 
-        this._rearmInsertionPointBlinkTimer();
+        if (this.get('isFirstResponder')) {
+            this._rearmInsertionPointBlinkTimer();
+        }
 
         if (ensureVisible) {
             this.scrollToPosition(this._selectedRange.end);
         }
+
+        this.notifyDelegates('textViewChangedSelection', this._selectedRange);
     },
 
     textInserted: function(text) {
-        if(!keyboardManager.processKeyInput(text, this,
+        if (!keyboardManager.processKeyInput(text, this,
                 { isTextView: true, isCommandKey: false })) {
             this.insertText(text);
             this.resetKeyBuffers();
@@ -66355,6 +66761,241 @@ exports.TextView = CanvasView.extend(MultiDelegateSupport, TextInput, {
 });
 
 tiki.module("text_editor:index",function(require,exports,module){});
+;tiki.register("theme_manager",{});
+tiki.module("theme_manager:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+var SC = require('sproutcore/runtime').SC;
+var Promise = require('bespin:promise').Promise;
+var m_plugins = require('bespin:plugins');
+
+/**
+ * @class
+ *
+ * Manages Bespin themes for a series of panes.
+ */
+exports.ThemeManager = SC.Object.extend({
+    _theme: null,
+
+    _applyTheme: function() {
+        var theme = this._theme;
+        if (SC.none(theme)) {
+            return;
+        }
+
+        this.get('panes').forEach(this._applyThemeToPane, this);
+    },
+
+    _applyThemeToPane: function(pane) {
+        var oldTheme = pane.get('theme');
+        if (SC.none(oldTheme)) {
+            oldTheme = window.ENV.theme;
+        }
+
+        var classNames = pane.get('classNames');
+        if (!SC.none(oldTheme)) {
+            var notOldTheme = function(theme) { return theme !== oldTheme; };
+            classNames = classNames.filter(notOldTheme);
+        }
+
+        var cssClass = this._theme.get('cssClass');
+        classNames.push(cssClass);
+
+        pane.set('classNames', classNames);
+        pane.set('theme', cssClass);
+        pane.set('bespinThemeManager', this);
+
+        pane.updateLayer();
+
+        this._applyThemeToView(pane);
+    },
+
+    _applyThemeToView: function(view) {
+        var theme = this._theme;
+        if (view.respondsTo('bespinThemeChanged')) {
+            view.bespinThemeChanged(this, theme);
+        }
+
+        view.get('childViews').forEach(this._applyThemeToView, this);
+    },
+
+    _panesChanged: function() {
+        this._applyTheme();
+    }.observes('panes'),
+
+    /**
+     * @property{Catalog}
+     *
+     * The plugin catalog to use. Can be set to a mock object for unit testing.
+     */
+    catalog: m_plugins.catalog,
+
+    /**
+     * @property{Array<SC.Pane>}
+     *
+     * An immutable list of panes to maintain themes for.
+     */
+    panes: [],
+
+    /**
+     * @property{string}
+     *
+     * The name of the theme to use (i.e. the key of the 'theme' endpoint of
+     * the desired theme).
+     */
+    theme: null,
+
+    /**
+     * @type{Promise}
+     *
+     * A promise that resolves when the default theme is registered.
+     *
+     * TODO: Remove me when we get proper theme support.
+     */
+    themeRegistered: null,
+
+    /**
+     * Adds a pane to the list of panes maintained by this theme.
+     */
+    addPane: function(pane) {
+        this.set('panes', this.get('panes').concat(pane));
+    },
+
+    init: function() {
+        this.set('themeRegistered', new Promise());
+        this.set('panes', this.get('panes').concat());
+    },
+
+    /**
+     * Loads the default theme and returns a promise that will resolve when the
+     * theme is loaded.
+     */
+    loadTheme: function() {
+        var loadPromise = new Promise();
+        this.get('themeRegistered').then(function(extension) {
+            extension.load().then(function(themeClass) {
+                var theme = themeClass.create();
+                this._theme = theme;
+                this._applyTheme();
+                loadPromise.resolve();
+            }.bind(this));
+        }.bind(this));
+        return loadPromise;
+    },
+
+    /**
+     * Removes a pane from the list of panes maintained by this theme.
+     */
+    removePane: function(pane) {
+        this.set('panes', this.get('panes').filter(function(otherPane) {
+            return pane !== otherPane;
+        }));
+    }
+});
+
+exports.themeManager = exports.ThemeManager.create({theme: 'Screen'});
+
+exports.registerTheme = function(extension) {
+    var themeManager = exports.themeManager;
+    if (extension.name === themeManager.get('theme')) {
+        themeManager.get('themeRegistered').resolve(extension);
+    }
+};
+
+
+});
+;tiki.register("events",{});
+tiki.module("events:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+exports.Event = function() {
+    var handlers = [];
+    var evt = function() {
+        var args = arguments;
+        handlers.forEach(function(handler) { handler.apply(null, args); });
+    };
+
+    evt.add = function(handler) { handlers.push(handler); };
+    evt.remove = function(handler) {
+        var notEqual = function(other) { return handler !== other; };
+        handlers = handlers.filter(notEqual);
+    };
+
+    return evt;
+};
+
+
+});
 ;tiki.register("dock_view",{});
 tiki.module("dock_view:index",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
@@ -66365,7 +67006,7 @@ tiki.module("dock_view:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -66396,16 +67037,18 @@ tiki.module("dock_view:index",function(require,exports,module) {
 
 "define metadata";
 ({
-	"description": "A view that supports docked panels on the sides"
+	"description": "A view that supports docked panels on the sides",
+    "provides": [
+        {
+            "ep": "appcomponent",
+            "name": "dock_view",
+            "pointer": "#DockView"
+        }
+    ]
 });
 "end";
 
 var SC = require('sproutcore/runtime').SC;
-
-exports.DOCK_LEFT = 'left';
-exports.DOCK_BOTTOM = 'bottom';
-exports.DOCK_TOP = 'top';
-exports.DOCK_RIGHT = 'right';
 
 /**
  * @class
@@ -66418,8 +67061,21 @@ exports.DOCK_RIGHT = 'right';
 exports.DockView = SC.View.extend({
     classNames: [ 'bespin-dock-view' ],
 
-    centerView: SC.View,
+    /**
+     * @property{SC.View}
+     *
+     * The center view for this dock view. Will be instantiated when this view
+     * is created; can be reinstantiated with the @createCenterView() method.
+     */
+    centerView: null,
+
     dockedViews: [],
+
+    _createCenterView: function(centerViewClass) {
+        var view = this.createChildView(centerViewClass, { layoutView: this });
+        this.set('centerView', view);
+        return view;
+    },
 
     /**
      * Instantiates a view, adds it to the set of docked views, and returns it.
@@ -66433,9 +67089,9 @@ exports.DockView = SC.View.extend({
     addDockedView: function(viewClass, position) {
         var dockedViews = this.get('dockedViews');
         var index = dockedViews.length;
-        
+
         if (SC.none(position)) {
-            position = exports.DOCK_BOTTOM;
+            position = 'bottom';
         }
 
         var thisDockView = this;
@@ -66453,18 +67109,20 @@ exports.DockView = SC.View.extend({
     },
 
     removeDockedView: function(view) {
-        var dockedViews = this.get("dockedViews");
+        var dockedViews = this.get('dockedViews');
         dockedViews.removeObject(view);
         this.removeChild(view);
         this._updateChildLayout();
     },
 
     createChildViews: function() {
-        var centerView = this.createChildView(this.get('centerView'), {
-            layoutView: this
-        });
-        this.set('centerView', centerView);
-        var childViews = [ centerView ];
+        var childViews = [];
+
+        var centerViewClass = this.get('centerView');
+        if (centerViewClass !== null) {
+            var centerView = this._createCenterView(centerViewClass);
+            childViews.push(centerView);
+        }
 
         var dockedViews = this.get('dockedViews');
         for (var i = 0; i < dockedViews.length; i++) {
@@ -66475,6 +67133,27 @@ exports.DockView = SC.View.extend({
         return this;
     },
 
+    /**
+     * Instantiates the given class as the new center view for this dock view,
+     * possibly replacing the old center view.
+     */
+    createCenterView: function(newCenterViewClass) {
+        var oldCenterView = this.get('centerView');
+        if (oldCenterView !== null) {
+            oldCenterView.removeFromParent();
+        }
+
+        var newCenterView = this._createCenterView(newCenterViewClass);
+        this._updateChildLayout();
+        return newCenterView;
+    },
+
+    init: function() {
+        arguments.callee.base.apply(this, arguments);
+
+        this.set('dockedViews', this.get('dockedViews').concat());
+    },
+
     _updateChildLayout: function() {
         var left = 0, bottom = 0, top = 0, right = 0;
         this.get('dockedViews').forEach(function(item) {
@@ -66482,38 +67161,47 @@ exports.DockView = SC.View.extend({
             var dock = item.get('dock');
 
             switch (dock) {
-            case exports.DOCK_LEFT:
+            case 'left':
                 left += frame.width;
                 item.adjust('top', top);
                 item.adjust('bottom', bottom);
                 break;
 
-            case exports.DOCK_BOTTOM:
+            case 'bottom':
                 bottom += frame.height;
                 item.adjust('left', left);
                 item.adjust('right', right);
                 break;
 
-            case exports.DOCK_TOP:
+            case 'top':
                 top += frame.height;
                 item.adjust('left', left);
                 item.adjust('right', right);
                 break;
 
-            case exports.DOCK_RIGHT:
+            case 'right':
                 right += frame.width;
                 item.adjust('top', top);
                 item.adjust('bottom', bottom);
                 break;
 
             default:
-                throw new Error("invalid 'dock' property: " + dock);
+                throw new Error('invalid \'dock\' property: ' + dock);
                 break;  // silence jslint
             }
         });
 
-        var layout = { left: left, bottom: bottom, top: top, right: right };
-        this.get('centerView').adjust(layout);
+        var centerView = this.get('centerView');
+        if (centerView !== null) {
+            var layout = {
+                left:   left,
+                bottom: bottom,
+                top:    top,
+                right:  right
+            };
+
+            centerView.adjust(layout);
+        }
     },
 
     renderLayout: function(context, firstTime) {
@@ -66524,346 +67212,8 @@ exports.DockView = SC.View.extend({
 
 
 });
-;tiki.register("filesystem",{});
-tiki.module("filesystem:index",function(require,exports,module) {
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1
- *
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * See the License for the specific language governing rights and
- * limitations under the License.
- *
- * The Original Code is Bespin.
- *
- * The Initial Developer of the Original Code is Mozilla.
- * Portions created by the Initial Developer are Copyright (C) 2009
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Bespin Team (bespin@mozilla.com)
- *
- * ***** END LICENSE BLOCK ***** */
-
-var SC = require("sproutcore/runtime").SC;
-var console = require('bespin:console').console;
-var util = require("bespin:util/util");
-var m_promise = require("bespin:promise");
-
-var pathUtil = require("filesystem:path");
-
-var Promise = m_promise.Promise;
-
-// Does a binary search on a sorted array, returning
-// the *first* index in the array with the prefix
-exports._prefixSearch = function(arr, find) {
-    var low = 0;
-    var high = arr.length - 1;
-    var findlength = find.length;
-    var i;
-    var lowmark = null;
-    var sub;
-    
-    while (low <= high) {
-        i = parseInt((low + high) / 2, 10);
-        sub = arr[i].substring(0, findlength);
-        if (i == lowmark) {
-            return i;
-        }
-        
-        if (sub == find) {
-            lowmark = i;
-            high = i - 1;
-        } else {
-            if (sub < find) {
-                low = i + 1;
-            } else {
-                high = i - 1;
-            }
-        }
-    }
-    return lowmark;
-};
-
-// Standard binary search
-exports._binarySearch = function(arr, find) {
-    var low = 0;
-    var high = arr.length - 1;
-    var i;
-    var current;
-    
-    while (low <= high) {
-        i = parseInt((low + high) / 2, 10);
-        current = arr[i];
-        if (current < find) {
-            low = i + 1;
-        } else if (current > find) {
-            high = i - 1;
-        } else {
-            return i;
-        }
-    }
-    return null;
-};
-
-exports.NEW = { name: "NEW" };
-exports.LOADING = { name: "LOADING" };
-exports.READY = { name: "READY" };
-
-exports.Filesystem = SC.Object.extend({
-    // FileSource for this filesytem
-    source: null,
-    
-    // list of filenames
-    _files: null,
-    
-    status: exports.NEW,
-    _loadingPromises: null,
-    
-    init: function() {
-        var source = this.get("source");
-        if (typeof(source) == "string") {
-            this.set("source", SC.objectForPropertyPath(source));
-        }
-
-        if (!this.get("source")) {
-            throw new Error("Directory must have a source.");
-        }
-        
-        this._loadingPromises = [];
-    },
-    
-    _load: function() {
-        var pr = new Promise();
-        if (this.status === exports.READY) {
-            pr.resolve();
-        } else if (this.status === exports.LOADING) {
-            this._loadingPromises.push(pr);
-        } else {
-            this.set("status", exports.LOADING);
-            this._loadingPromises.push(pr);
-            this.get("source").loadAll().then(this._fileListReceived.bind(this));
-        }
-        return pr;
-    },
-    
-    _fileListReceived: function(filelist) {
-        filelist.sort();
-        this._files = filelist;
-        this.set("status", exports.READY);
-        var lp = this._loadingPromises;
-        while (lp.length > 0) {
-            var pr = lp.pop();
-            pr.resolve();
-        }
-    },
-    
-    /*
-     * Call this if you make a big change to the files in the filesystem. This will cause the entire cache
-     * to be reloaded on the next call that requires it.
-     */
-    invalidate: function() {
-        this._files = [];
-        this.set("status", exports.NEW);
-    },
-    
-    /*
-     * Get a list of all files in the filesystem.
-     */
-    listAll: function() {
-        return this._load().then(function() {
-            return this._files;
-        }.bind(this));
-    },
-    
-    /*
-     * Loads the contents of the file at path. When the promise is
-     * resolved, the contents are passed in.
-     */
-    loadContents: function(path) {
-        path = pathUtil.trimLeadingSlash(path);
-        var source = this.get("source");
-        return source.loadContents(path);
-    },
-    
-    /*
-     * Save a contents to the path provided. If the file does not
-     * exist, it will be created.
-     */
-    saveContents: function(path, contents) {
-        var pr = new Promise();
-        path = pathUtil.trimLeadingSlash(path);
-        var source = this.get("source");
-        var self = this;
-        source.saveContents(path, contents).then(function() {
-            self.exists(path).then(function(exists) {
-                if (!exists) {
-                    self._files.push(path);
-                    self._files.sort();
-                }
-                pr.resolve();
-            });
-        });
-        return pr;
-    },
-    
-    /*
-     * get a File object that provides convenient path
-     * manipulation and access to the file data.
-     */
-    getFile: function(path) {
-        return new exports.File(this, path);
-    },
-    
-    /*
-     * Returns a promise that will resolve to true if the given path
-     * exists.
-     */
-    exists: function(path) {
-        path = pathUtil.trimLeadingSlash(path);
-        var pr = new Promise();
-        this._load().then(function() {
-            var result = exports._binarySearch(this._files, path);
-            pr.resolve(result !== null);
-        }.bind(this));
-        return pr;
-    },
-    
-    /*
-     * Deletes the file or directory at a path.
-     */
-    remove: function(path) {
-        path = pathUtil.trimLeadingSlash(path);
-        var pr = new Promise();
-        var self = this;
-        var source = this.get("source");
-        source.remove(path).then(function() {
-            self._load().then(function() {
-                var position = exports._binarySearch(self._files, path);
-                if (position === null) {
-                    pr.reject(new Error("Cannot find path " + path + " to remove"));
-                    return;
-                }
-                self._files.splice(position, 1);
-                pr.resolve();
-            }, function(error) {
-                pr.reject(error);
-            });
-        }, function(error) {
-            pr.reject(error);
-        });
-        return pr;
-    },
-    
-    /*
-     * Lists the contents of the directory at the path provided.
-     * Returns a promise that will be given a list of file 
-     * and directory names for the contents of the directory.
-     * Directories are distinguished by a trailing slash.
-     */
-    listDirectory: function(path) {
-        path = pathUtil.trimLeadingSlash(path);
-        var pr = new Promise();
-        this._load().then(function() {
-            var files = this._files;
-            var index = exports._prefixSearch(files, path);
-            if (index === null) {
-                pr.reject(new Error('Path ' + path + ' not found.'));
-                return;
-            }
-            var result = [];
-            var numfiles = files.length;
-            var pathlength = path.length;
-            var lastSegment = null;
-            for (var i = index; i < numfiles; i++) {
-                var file = files[i];
-                if (file.substring(0, pathlength) != path) {
-                    break;
-                }
-                var segmentEnd = file.indexOf("/", pathlength) + 1;
-                if (segmentEnd == 0) {
-                    segmentEnd = file.length;
-                }
-                var segment = file.substring(pathlength, segmentEnd);
-                if (segment == "") {
-                    continue;
-                }
-                
-                if (segment != lastSegment) {
-                    lastSegment = segment;
-                    result.push(segment);
-                }
-            }
-            pr.resolve(result);
-        }.bind(this));
-        return pr;
-    },
-    
-    /*
-     * Creates a directory at the path provided. Nothing is
-     * passed into the promise callback.
-     */
-    makeDirectory: function(path) {
-        path = pathUtil.trimLeadingSlash(path);
-        if (!pathUtil.isDir(path)) {
-            path += "/";
-        }
-        
-        var self = this;
-        var pr = new Promise();
-        this._load().then(function() {
-            var source = self.get("source");
-            source.makeDirectory(path).then(function() {
-                self._files.push(path);
-                // O(n log n), eh? but all in C so it's possible
-                // that this may be quicker than binary search + splice
-                self._files.sort();
-                pr.resolve();
-            });
-        });
-        return pr;
-    }
-});
-
-exports.File = function(fs, path) {
-    this.fs = fs;
-    this.path = path;
-};
-
-exports.File.prototype = {
-    parentdir: function() {
-        return pathUtil.parentdir(this.path);
-    },
-    
-    loadContents: function() {
-        return this.fs.loadContents(this.path);
-    },
-    
-    saveContents: function(contents) {
-        return this.fs.saveContents(this.path, contents);
-    },
-    
-    exists: function() {
-        return this.fs.exists(this.path);
-    },
-    
-    remove: function() {
-        return this.fs.remove(this.path);
-    },
-    
-    extension: function() {
-        return pathUtil.fileType(this.path);
-    }
-};
-
-});
-
-tiki.module("filesystem:path",function(require,exports,module) {
+;tiki.register("screen_theme",{});
+tiki.module("screen_theme:index",function(require,exports,module) {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -66872,7 +67222,7 @@ tiki.module("filesystem:path",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -66901,13 +67251,417 @@ tiki.module("filesystem:path",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-var util = require("bespin:util/util");
+var SC = require('sproutcore/runtime').SC;
+
+exports.ScreenTheme = SC.Object.extend({
+    cssClass: 'bespin-screen'
+});
+
+// Change the themable properties of the SproutCore scroll bars. This is an
+// officially supported method of changing the scroller properties (see
+// sproutcore/frameworks/desktop/views/scroller.js).
+SC.mixin(SC.ScrollerView.prototype, {
+    scrollbarThickness: 17,
+    capLength: 15 + 6,
+    capOverlap: 0,
+    buttonLength: 15 + 6,
+    buttonOverlap: 0
+});
+
+
+});
+;tiki.register("filesystem",{});
+tiki.module("filesystem:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1
+ *
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS'
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * See the License for the specific language governing rights and
+ * limitations under the License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+var SC = require('sproutcore/runtime').SC;
+var console = require('bespin:console').console;
+var util = require('bespin:util/util');
+var m_promise = require('bespin:promise');
+
+var pathUtil = require('filesystem:path');
+
+var Promise = m_promise.Promise;
+
+// Does a binary search on a sorted array, returning
+// the *first* index in the array with the prefix
+exports._prefixSearch = function(arr, find) {
+    var low = 0;
+    var high = arr.length - 1;
+    var findlength = find.length;
+    var i;
+    var lowmark = null;
+    var sub;
+
+    while (low <= high) {
+        i = parseInt((low + high) / 2, 10);
+        sub = arr[i].substring(0, findlength);
+        if (i == lowmark) {
+            return i;
+        }
+
+        if (sub == find) {
+            lowmark = i;
+            high = i - 1;
+        } else {
+            if (sub < find) {
+                low = i + 1;
+            } else {
+                high = i - 1;
+            }
+        }
+    }
+    return lowmark;
+};
+
+// Standard binary search
+exports._binarySearch = function(arr, find) {
+    var low = 0;
+    var high = arr.length - 1;
+    var i;
+    var current;
+
+    while (low <= high) {
+        i = parseInt((low + high) / 2, 10);
+        current = arr[i];
+        if (current < find) {
+            low = i + 1;
+        } else if (current > find) {
+            high = i - 1;
+        } else {
+            return i;
+        }
+    }
+    return null;
+};
+
+exports.NEW = { name: 'NEW' };
+exports.LOADING = { name: 'LOADING' };
+exports.READY = { name: 'READY' };
+
+exports.Filesystem = SC.Object.extend({
+    // FileSource for this filesytem
+    source: null,
+
+    // list of filenames
+    _files: null,
+
+    status: exports.NEW,
+    _loadingPromises: null,
+
+    init: function() {
+        var source = this.get('source');
+        if (typeof(source) == 'string') {
+            this.set('source', SC.objectForPropertyPath(source));
+        }
+
+        if (!this.get('source')) {
+            throw new Error('Directory must have a source.');
+        }
+
+        this._loadingPromises = [];
+    },
+
+    _load: function() {
+        var pr = new Promise();
+        if (this.status === exports.READY) {
+            pr.resolve();
+        } else if (this.status === exports.LOADING) {
+            this._loadingPromises.push(pr);
+        } else {
+            this.set('status', exports.LOADING);
+            this._loadingPromises.push(pr);
+            this.get('source').loadAll().then(this._fileListReceived.bind(this));
+        }
+        return pr;
+    },
+
+    _fileListReceived: function(filelist) {
+        filelist.sort();
+        this._files = filelist;
+        this.set('status', exports.READY);
+        var lp = this._loadingPromises;
+        while (lp.length > 0) {
+            var pr = lp.pop();
+            pr.resolve();
+        }
+    },
+
+    /**
+     * Call this if you make a big change to the files in the filesystem. This will cause the entire cache
+     * to be reloaded on the next call that requires it.
+     */
+    invalidate: function() {
+        this._files = [];
+        this.set('status', exports.NEW);
+    },
+
+    /**
+     * Get a list of all files in the filesystem.
+     */
+    listAll: function() {
+        return this._load().chainPromise(function() {
+            return this._files;
+        }.bind(this));
+    },
+
+    /**
+     * Loads the contents of the file at path. When the promise is
+     * resolved, the contents are passed in.
+     */
+    loadContents: function(path) {
+        path = pathUtil.trimLeadingSlash(path);
+        var source = this.get('source');
+        return source.loadContents(path);
+    },
+
+    /**
+     * Save a contents to the path provided. If the file does not
+     * exist, it will be created.
+     */
+    saveContents: function(path, contents) {
+        var pr = new Promise();
+        path = pathUtil.trimLeadingSlash(path);
+        var source = this.get('source');
+        var self = this;
+        source.saveContents(path, contents).then(function() {
+            self.exists(path).then(function(exists) {
+                if (!exists) {
+                    self._files.push(path);
+                    self._files.sort();
+                }
+                pr.resolve();
+            });
+        }, function(error) {
+            pr.reject(error);
+        });
+        return pr;
+    },
+
+    /**
+     * get a File object that provides convenient path
+     * manipulation and access to the file data.
+     */
+    getFile: function(path) {
+        return new exports.File(this, path);
+    },
+
+    /**
+     * Returns a promise that will resolve to true if the given path
+     * exists.
+     */
+    exists: function(path) {
+        path = pathUtil.trimLeadingSlash(path);
+        var pr = new Promise();
+        this._load().then(function() {
+            var result = exports._binarySearch(this._files, path);
+            pr.resolve(result !== null);
+        }.bind(this));
+        return pr;
+    },
+
+    /**
+     * Deletes the file or directory at a path.
+     */
+    remove: function(path) {
+        path = pathUtil.trimLeadingSlash(path);
+        var pr = new Promise();
+        var self = this;
+        var source = this.get('source');
+        source.remove(path).then(function() {
+            // Check if the file list is already loaded or about to load.
+            // If true, then we have to remove the deleted file from the list.
+            if (self.status !== exports.NEW) {
+                self._load().then(function() {
+                    var position = exports._binarySearch(self._files, path);
+                    // In some circumstances, the deleted file might not be
+                    // in the file list.
+                    if (position !== null) {
+                        self._files.splice(position, 1);
+                    }
+                    pr.resolve();
+                }, function(error) {
+                    pr.reject(error);
+                });
+            } else {
+                pr.resolve();
+            }
+        }, function(error) {
+            pr.reject(error);
+        });
+        return pr;
+    },
+
+    /*
+     * Lists the contents of the directory at the path provided.
+     * Returns a promise that will be given a list of file
+     * and directory names for the contents of the directory.
+     * Directories are distinguished by a trailing slash.
+     */
+    listDirectory: function(path) {
+        path = pathUtil.trimLeadingSlash(path);
+        var pr = new Promise();
+        this._load().then(function() {
+            var files = this._files;
+            var index = exports._prefixSearch(files, path);
+            if (index === null) {
+                pr.reject(new Error('Path ' + path + ' not found.'));
+                return;
+            }
+            var result = [];
+            var numfiles = files.length;
+            var pathlength = path.length;
+            var lastSegment = null;
+            for (var i = index; i < numfiles; i++) {
+                var file = files[i];
+                if (file.substring(0, pathlength) != path) {
+                    break;
+                }
+                var segmentEnd = file.indexOf('/', pathlength) + 1;
+                if (segmentEnd == 0) {
+                    segmentEnd = file.length;
+                }
+                var segment = file.substring(pathlength, segmentEnd);
+                if (segment == '') {
+                    continue;
+                }
+
+                if (segment != lastSegment) {
+                    lastSegment = segment;
+                    result.push(segment);
+                }
+            }
+            pr.resolve(result);
+        }.bind(this));
+        return pr;
+    },
+
+    /**
+     * Creates a directory at the path provided. Nothing is
+     * passed into the promise callback.
+     */
+    makeDirectory: function(path) {
+        path = pathUtil.trimLeadingSlash(path);
+        if (!pathUtil.isDir(path)) {
+            path += '/';
+        }
+
+        var self = this;
+        var pr = new Promise();
+        this._load().then(function() {
+            var source = self.get('source');
+            source.makeDirectory(path).then(function() {
+                self._files.push(path);
+                // O(n log n), eh? but all in C so it's possible
+                // that this may be quicker than binary search + splice
+                self._files.sort();
+                pr.resolve();
+            });
+        });
+        return pr;
+    }
+});
+
+exports.File = function(fs, path) {
+    this.fs = fs;
+    this.path = path;
+};
+
+exports.File.prototype = {
+    parentdir: function() {
+        return pathUtil.parentdir(this.path);
+    },
+
+    loadContents: function() {
+        return this.fs.loadContents(this.path);
+    },
+
+    saveContents: function(contents) {
+        return this.fs.saveContents(this.path, contents);
+    },
+
+    exists: function() {
+        return this.fs.exists(this.path);
+    },
+
+    remove: function() {
+        return this.fs.remove(this.path);
+    },
+
+    extension: function() {
+        return pathUtil.fileType(this.path);
+    }
+};
+
+});
+
+tiki.module("filesystem:path",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+var util = require('bespin:util/util');
 
 /**
  * Take the given arguments and combine them with one path separator:
  * <pre>
- * combine("foo", "bar") -&gt; foo/bar
- * combine(" foo/", "/bar  ") -&gt; foo/bar
+ * combine('foo', 'bar') -&gt; foo/bar
+ * combine(' foo/', '/bar  ') -&gt; foo/bar
  * </pre>
  */
 exports.combine = function() {
@@ -66922,21 +67676,21 @@ exports.combine = function() {
 
 /**
  * Given a <code>path</code> return the directory
- * <li>directory("/path/to/directory/file.txt") -&gt; /path/to/directory/
- * <li>directory("/path/to/directory/") -&gt; /path/to/directory/
- * <li>directory("foo.txt") -&gt; ""
+ * <li>directory('/path/to/directory/file.txt') -&gt; /path/to/directory/
+ * <li>directory('/path/to/directory/') -&gt; /path/to/directory/
+ * <li>directory('foo.txt') -&gt; ''
  */
 exports.directory = function(path) {
     var match = /^(.*?\/)[^\/]*$/.exec(path);
-    return match === null ? "" : match[1];
+    return match === null ? '' : match[1];
 };
 
 /**
  * Given a <code>path</code> make sure that it returns as a directory
  * (As in, ends with a '/')
  * <pre>
- * makeDirectory("/path/to/directory") -&gt; /path/to/directory/
- * makeDirectory("/path/to/directory/") -&gt; /path/to/directory/
+ * makeDirectory('/path/to/directory') -&gt; /path/to/directory/
+ * makeDirectory('/path/to/directory/') -&gt; /path/to/directory/
  * </pre>
  */
 exports.makeDirectory = function(path) {
@@ -66948,8 +67702,8 @@ exports.makeDirectory = function(path) {
  * Take the given arguments and combine them with one path separator and
  * then make sure that you end up with a directory
  * <pre>
- * combine("foo", "bar") -&gt; foo/bar/
- * combine(" foo/", "/bar  ") -&gt; foo/bar/
+ * combine('foo', 'bar') -&gt; foo/bar/
+ * combine(' foo/', '/bar  ') -&gt; foo/bar/
  * </pre>
  */
 exports.combineAsDirectory = function() {
@@ -66996,7 +67750,7 @@ exports.fileType = function(path) {
 * Returns true if the path points to a directory (ends with a /).
 */
 exports.isDir = function(path) {
-    return util.endsWith(path, "/");
+    return util.endsWith(path, '/');
 };
 
 /*
@@ -67005,7 +67759,7 @@ exports.isDir = function(path) {
  * /foo/bar/baz.js -> 'baz.js'
  */
 exports.basename = function(path) {
-    var lastSlash = path.lastIndexOf("/");
+    var lastSlash = path.lastIndexOf('/');
     if (lastSlash == -1) {
         return path;
     }
@@ -67015,13 +67769,13 @@ exports.basename = function(path) {
 
 /*
  * splits the path from the extension, returning a 2 element array
- * "/foo/bar/" -> ["/foo/bar", ""]
- * "/foo/bar/baz.js" -> ["/foo/bar/baz", "js"]
+ * '/foo/bar/' -> ['/foo/bar', '']
+ * '/foo/bar/baz.js' -> ['/foo/bar/baz', 'js']
  */
 exports.splitext = function(path) {
-    var lastDot = path.lastIndexOf(".");
+    var lastDot = path.lastIndexOf('.');
     if (lastDot == -1) {
-        return [path, ""];
+        return [path, ''];
     }
     var before = path.substring(0, lastDot);
     var after = path.substring(lastDot+1);
@@ -67030,20 +67784,20 @@ exports.splitext = function(path) {
 
 /*
  * figures out the parent directory
- * "" -&gt; ""
- * "/" -&gt; ""
- * "/foo/bar/" -&gt; "/foo/"
- * "/foo/bar/baz.txt" -&gt; "/foo/bar/"
+ * '' -&gt; ''
+ * '/' -&gt; ''
+ * '/foo/bar/' -&gt; '/foo/'
+ * '/foo/bar/baz.txt' -&gt; '/foo/bar/'
  */
 exports.parentdir = function(path) {
-    if (path == "" || path == "/") {
-        return "";
+    if (path == '' || path == '/') {
+        return '';
     }
-    
+
     if (exports.isDir(path)) {
         path = path.substring(0, path.length-1);
     }
-    slash = path.lastIndexOf("/");
+    slash = path.lastIndexOf('/');
     path = path.substring(0, slash+1);
     return path;
 };
@@ -67059,7 +67813,7 @@ tiki.module("filesystem:types",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -67117,7 +67871,7 @@ tiki.module("edit_session:history",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -67147,6 +67901,9 @@ tiki.module("edit_session:history",function(require,exports,module) {
  * ***** END LICENSE BLOCK ***** */
 
 var SC = require('sproutcore/runtime').SC;
+var environment = require('canon:environment');
+
+var MAX_HISTORY_SIZE = 30;
 
 /**
  * @class
@@ -67154,38 +67911,85 @@ var SC = require('sproutcore/runtime').SC;
  * A list of recently opened files.
  */
 exports.History = SC.Object.extend({
-    storage: window.localStorage,
-
-    addPath: function(path) {
-        var storage = this.get('storage');
-        var historyStr = storage.history;
-        var history = SC.none(historyStr) ? [] : JSON.parse(historyStr);
-
-        history.push(path);
-        storage.history = JSON.stringify(history);
+    _getStorageName: function() {
+        var user = environment.global.get('session').currentUser;
+        return 'bespin.history.' + user;
     },
 
-    getRecent: function(max) {
-        var historyStr = this.get('storage').history;
-        var history = SC.none(historyStr) ? [] : JSON.parse(historyStr);
+    _getHistory: function() {
+        var storage = this.get('storage');
+        var value = storage[this._getStorageName()];
+        if (value) {
+            return JSON.parse(value);
+        }
 
-        var historyLength = history.length;
-        var seen = {}, result = [], count = 0;
+        return [];
+    },
 
-        for (var i = historyLength - 1; i >= 0; i--) {
-            var path = history[i];
-            if (!(path in seen)) {
-                seen[path] = true;
-                result.push(path);
+    _setHistory: function(newHistory) {
+        var storage = this.get('storage');
+        storage[this._getStorageName()] = JSON.stringify(newHistory);
+    },
 
-                count++;
-                if (count === max) {
-                    break;
-                }
+    /**
+     * @property{LocalStorage}
+     *
+     * The backing store to use. Defaults to HTML 5 local storage.
+     */
+    storage: window.localStorage,
+
+    /**
+     * Adds the supplied path to the history.
+     */
+    addPath: function(path) {
+        var history = this._getHistory();
+
+        var obj = null;
+        for (var i = history.length - 1; i >= 0; i--) {
+            var historyObj = history[i];
+            if (historyObj.path === path) {
+                obj = historyObj;
+                history.splice(i, 1);
+                break;
             }
         }
 
-        return result;
+        if (obj === null) {
+            obj = { path: path };
+        }
+
+        if (history.length >= MAX_HISTORY_SIZE) {
+            history.splice(0, history.length - MAX_HISTORY_SIZE + 1);
+        }
+
+        history.push(obj);
+
+        this._setHistory(history);
+    },
+
+    getRecent: function(max) {
+        var history = this._getHistory();
+        return history.slice(max < history.length ? -max : 0);
+    },
+
+    /**
+     * Updates metadata (the selection boundaries or the scroll position) for a
+     * path in the history (if the path is at the top).
+     *
+     * @param path  The path to update.
+     * @param key   The key to update ('selection' or 'scroll').
+     * @param value The value to set.
+     */
+    update: function(path, key, value) {
+        var history = this._getHistory();
+        var lastObject = history[history.length - 1];
+        if (lastObject.path !== path) {
+            return;
+        }
+
+        lastObject[key] = value;
+
+        this._setHistory(history);
     }
 });
 
@@ -67201,7 +68005,7 @@ tiki.module("edit_session:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -67230,13 +68034,18 @@ tiki.module("edit_session:index",function(require,exports,module) {
  *
  * ***** END LICENSE BLOCK ***** */
 
-var SC = require("sproutcore/runtime").SC;
-var File = require('filesystem:index').File;
-var History = require('edit_session:history').History;
-var MultiDelegateSupport = require('delegate_support').MultiDelegateSupport;
-var TextStorage = require("text_editor:models/textstorage").TextStorage;
+var Promise = require('bespin:promise').Promise;
 var catalog = require('bespin:plugins').catalog;
+
+var SC = require('sproutcore/runtime').SC;
+
+var File = require('filesystem:index').File;
+var MultiDelegateSupport = require('delegate_support').MultiDelegateSupport;
+var TextStorage = require('text_editor:models/textstorage').TextStorage;
 var m_path = require('filesystem:path');
+var bespin = require('appsupport:controllers/bespin').bespinController;
+
+var History = require('edit_session:history').History;
 
 /*
 * A Buffer connects a model and file together.
@@ -67245,38 +68054,23 @@ exports.Buffer = SC.Object.extend(MultiDelegateSupport, {
     _file: null,
 
     _fileChanged: function() {
-        this._refreshSyntaxManager();
         this.notifyDelegates('bufferFileChanged', this._file);
     }.observes('file'),
 
-    _refreshSyntaxManager: function() {
-        var syntaxManager = this.get('syntaxManager');
-        if (SC.none(syntaxManager)) {
-            return;
-        }
-
-        var file = this._file;
-        if (SC.none(file)) {
-            return;
-        }
-        
-        var ext = file.extension();
-        if (ext === null) {
-            ext = '';
-        }
-        syntaxManager.setInitialContextFromExt(ext);
-    },
+    _modelChanged: function() {
+        this.notifyDelegates('bufferModelChanged', this.get('model'));
+    }.observes('model'),
 
     /*
     * The text model that is holding the content of the file.
-    */ 
+    */
     model: null,
 
     /**
      * The syntax manager associated with this file.
      */
     syntaxManager: null,
-    
+
     /*
     * The filesystem.File object that is associated with this Buffer.
     * If this Buffer has not been saved to a file, this will be null.
@@ -67287,96 +68081,87 @@ exports.Buffer = SC.Object.extend(MultiDelegateSupport, {
     * Buffer.changeFileOnly method.
     */
     file: function(key, newFile) {
-        var self = this;
         if (newFile !== undefined) {
             this._file = newFile;
-            
+
             if (SC.none(newFile)) {
-                var model = self.get("model");
-                model.replaceCharacters(model.range(), "");
+                this.set('model', TextStorage.create());
             } else {
                 newFile.loadContents().then(function(contents) {
-                    console.log("SET FILE CONTENTS: ", contents);
+                    console.log('SET FILE CONTENTS: ', contents);
                     SC.run(function() {
-                        var model = self.get("model");
-                        model.replaceCharacters(model.range(), contents);
-                    });
-                });
+                        this.set('model', TextStorage.create({
+                            initialValue: contents
+                        }));
+                    }.bind(this));
+                }.bind(this));
             }
         }
         return this._file;
     }.property(),
 
     init: function() {
-        var model = this.get("model");
+        var model = this.get('model');
         if (model == null) {
-            this.set("model", TextStorage.create());
+            this.set('model', TextStorage.create());
         }
-
-        this._refreshSyntaxManager();
     },
-    
+
     /*
-    * This is like calling set("file", value) except this returns
+    * This is like calling set('file', value) except this returns
     * a promise so that you can take action once the contents have
     * been loaded.
     */
     changeFile: function(newFile) {
-        var self = this;
         this.changeFileOnly(newFile);
-        
+
         // are we changing to a new file?
         if (SC.none(newFile)) {
-            var model = self.get("model");
-            model.replaceCharacters(model.range(), "");
+            this.set('model', TextStorage.create());
             var pr = new Promise();
             pr.resolve(this);
             return pr;
         }
-        
+
         return newFile.loadContents().then(function(contents) {
             SC.run(function() {
-                var model = self.get("model");
-                model.replaceCharacters(model.range(), contents);
-            });
-            return self;
-        });
+                var model = TextStorage.create({ initialValue: contents });
+                this.set('model', model);
+            }.bind(this));
+            return this;
+        }.bind(this));
     },
-    
+
     /*
-     * Normally, you would just call set("file", fileObject) on a Buffer.
-     * However, that will replace the contents of the model (reloading the file), 
+     * Normally, you would just call set('file', fileObject) on a Buffer.
+     * However, that will replace the contents of the model (reloading the file),
      * which is not always what you want. Use this method to change the
      * file that is tracked by this Buffer without replacing the contents of the
      * model.
      */
     changeFileOnly: function(newFile) {
         this._file = newFile;
-        this.propertyDidChange("file");
+        this.propertyDidChange('file');
     },
-    
+
     /*
      * reload the existing file contents from the server.
      */
     reload: function() {
-        var file = this.get("file");
+        var file = this.get('file');
         var self = this;
-        
+
         return file.loadContents().then(function(contents) {
-            var model = self.get("model");
-            model.replaceCharacters(model.range(), contents);
-            // the following should theoretically work...
-            // but does not seem to.
-            // model.set("value", contents);
-        });
+            this.set('model', TextStorage.create({ initialValue: contents }));
+        }.bind(this));
     },
-    
+
     /*
      * Save the contents of this buffer. Returns a promise that resolves
      * once the file is saved.
      */
     save: function() {
-        return this._file.saveContents(this.getPath('model.value'));
+        return this._file.saveContents(this.get('model').getValue());
     },
 
     /**
@@ -67389,8 +68174,8 @@ exports.Buffer = SC.Object.extend(MultiDelegateSupport, {
      */
     saveAs: function(newFile) {
         var promise = new Promise();
-        
-        newFile.saveContents(this.getPath('model.value')).then(function() {
+
+        newFile.saveContents(this.get('model').getValue()).then(function() {
             this.changeFileOnly(newFile);
             promise.resolve();
         }.bind(this), function(error) {
@@ -67410,40 +68195,84 @@ exports.Buffer = SC.Object.extend(MultiDelegateSupport, {
 });
 
 exports.EditSession = SC.Object.extend({
+    _currentBuffer: null,
+    _currentView: null,
+
     _currentBufferChanged: function() {
-        this.get('currentBuffer').addDelegate(this);
+        var oldBuffer = this._currentBuffer;
+        if (!SC.none(oldBuffer)) {
+            oldBuffer.removeDelegate(this);
+        }
+
+        var newBuffer = this.get('currentBuffer');
+        this._currentBuffer = newBuffer;
+        newBuffer.addDelegate(this);
     }.observes('currentBuffer'),
 
+    _currentViewChanged: function() {
+        var oldView = this._currentView;
+        if (!SC.none(oldView)) {
+            oldView.removeDelegate(this);
+        }
+
+        var newView = this.get('currentView');
+        this._currentView = newView;
+        newView.addDelegate(this);
+    }.observes('currentView'),
+
+    _updateHistoryProperty: function(key, value) {
+        var file = this._currentBuffer.get('file');
+        if (!SC.none(file)) {
+            this.get('history').update(file.path, key, value);
+        }
+    },
+
+    /**
+     * @property
+     *
+     * The 'current' buffer is the one that backs the current view.
+     */
+    currentBuffer: null,
+
     /*
-     * The "current" view is the editor component that most recently had
+     * @type{string}
+     *
+     * The name of the user, or null if no user is logged in.
+     */
+    currentUser: null,
+
+    /**
+     * @property{TextView}
+     *
+     * The 'current' view is the editor component that most recently had
      * the focus.
      */
     currentView: null,
-    
-    /*
-     * The "current" Buffer is the one that backs the currentView.
-     */
-    currentBuffer: null,
-    
-    /*
-     * The "current" user.
-     */
-    currentUser: null,
 
     /**
      * The history object to store file history in.
      */
     history: null,
-    
+
     bufferFileChanged: function(sender, file) {
         if (!SC.none(file)) {
             this.get('history').addPath(file.path);
+
+            var ext = file.extension();
+            var view = this._currentView;
+            var syntaxManager = view.getPath('layoutManager.syntaxManager');
+            syntaxManager.setInitialContextFromExt(ext === null ? '' : ext);
         }
-        catalog.getExtensions("bufferFileChanged").forEach(function (ext) {
+
+        catalog.getExtensions('bufferFileChanged').forEach(function (ext) {
             ext.load(function (f) {
                 f(file);
             });
         });
+    },
+
+    bufferModelChanged: function(sender, newModel) {
+        this._currentView.setPath('layoutManager.textStorage', newModel);
     },
 
     /*
@@ -67452,17 +68281,17 @@ exports.EditSession = SC.Object.extend({
      */
     getCompletePath: function(path) {
         if (path == null) {
-            path = "";
+            path = '';
         }
 
-        if (path == null || path.substring(0, 1) != "/") {
-            var buffer = this.get("currentBuffer");
+        if (path == null || path.substring(0, 1) != '/') {
+            var buffer = this._currentBuffer;
             var file;
             if (buffer) {
-                file = buffer.get("file");
+                file = buffer.get('file');
             }
             if (!file) {
-                path = "/" + path;
+                path = '/' + path;
             } else {
                 path = file.parentdir() + path;
             }
@@ -67472,19 +68301,130 @@ exports.EditSession = SC.Object.extend({
     },
 
     loadMostRecentOrNew: function() {
-        var recent = this.get('history').getRecent(1);
-        if (recent.length === 0) {
+        var recents = this.get('history').getRecent(1);
+        if (recents.length === 0) {
             return;
         }
-        var files = catalog.getObject("files");
-        var file = files.getFile(recent[0]);
-        this.get('currentBuffer').changeFile(file);
+
+        var recent = recents[0];
+
+        // We have to save these values here, because they're going to get
+        // clobbered when the new file is loaded and the editor readjusts the
+        // selection to the beginning. (Not much we can do about this: the
+        // text view is rightfully paranoid about the model shifting underneath
+        // it...)
+        var scroll = recent.scroll, selection = recent.selection;
+
+        var file = bespin.files.getFile(recent.path);
+        this._currentBuffer.changeFile(file).then(function() {
+            var view = this._currentView;
+            if (!SC.none(scroll)) {
+                view.scrollTo(scroll);
+            }
+            if (!SC.none(selection)) {
+                view.setSelection(selection);
+            }
+        }.bind(this));
+    },
+
+    /**
+     * Called by the text view whenever the current selection changes.
+     */
+    textViewChangedSelection: function(sender, newSelection) {
+        this._updateHistoryProperty('selection', newSelection);
+    },
+
+    /**
+     * Called by the text view whenever it scrolls.
+     */
+    textViewWasScrolled: function(sender, point) {
+        this._updateHistoryProperty('scroll', point);
     },
 
     init: function() {
         this.set('history', History.create());
     }
 });
+
+// A small object that's exported to the Bespin controller to allow the
+// controller to find the relevant classes.
+exports.editSessionClasses = {
+    Buffer: exports.Buffer,
+    EditSession: exports.EditSession
+};
+
+
+});
+;tiki.register("keylistener",{});
+tiki.module("keylistener:index",function(require,exports,module) {
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an 'AS IS' basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+var SC = require('sproutcore/runtime').SC;
+var keyboardManager = require('canon:keyboard').keyboardManager;
+
+"define metadata";
+({
+    "description": "Routes keys to the appropriate destination",
+    "dependencies": {
+        "canon": "0.0"
+    },
+    "provides": [
+        {
+            "ep": "appcomponent",
+            "name": "key_listener",
+            "pointer": "#KeyListener"
+        }
+    ]
+});
+"end";
+
+/**
+ * @class
+ *
+ * This simple responder listens for keys that should be handled by the
+ * application and routes them to the appropriate objects.
+ */
+exports.KeyListener = SC.Responder.extend({
+    performKeyEquivalent: function(key, evt) {
+        keyboardManager.processKeyEvent(evt, this, { 'isApplication': true });
+    }
+});
+
 
 });
 ;tiki.register("embedded",{});
@@ -67525,22 +68465,28 @@ tiki.module("embedded:index",function(require,exports,module) {
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
- 
+
 "define metadata";
 ({
+    "description": "The environment for an embedded Bespin instance",
     "dependencies": {
-		"appsupport": "0.0",
-		"dock_view": "0.0",
-		"edit_session": "0.0",
-		"text_editor": "0.0",
-		"settings": "0.0"
+        "appsupport": "0.0",
+        "dock_view": "0.0",
+        "edit_session": "0.0",
+        "events": "0.0",
+        "keylistener": "0.0",
+        "rangeutils": "0.0",
+        "screen_theme": "0.0",
+        "settings": "0.0",
+        "text_editor": "0.0",
+        "theme_manager": "0.0",
+        "traits": "0.0"
 	},
     "provides": [
         {
-            "ep": "factory",
-            "name": "session",
-            "pointer": "#session",
-            "action": "value"
+            "ep": "appcomponent",
+            "name": "environment",
+            "pointer": "#embeddedEditor"
         }
     ]
 });
@@ -67552,47 +68498,44 @@ tiki.module("embedded:index",function(require,exports,module) {
  * and easy to learn to the embedding user.
  */
 
-var SC = require("sproutcore/runtime").SC;
-var DockView = require('dock_view').DockView;
-var EditorView = require('text_editor:views/editor').EditorView;
-var KeyListener = require('appsupport:views/keylistener').KeyListener;
-var bespin = require("bespin:index");
-var edit_session = require('edit_session');
-var settings = require('settings').settings;
-var util = require("bespin:util/util");
+var SC = require('sproutcore/runtime').SC;
+var Event = require('events').Event;
+var Promise = require('bespin:promise').Promise;
+var Trait = require('traits').Trait;
+var console = require('bespin:console').console;
+var m_range = require('rangeutils:utils/range');
 
-var embeddedEditorInstantiated = false;
+var embeddedEditor = Trait.object({
+    _element: null,
+    _elementChosen: new Promise(),
+    _events: null,
+    _options: null,
+    _session: null,
 
-exports.EmbeddedEditor = SC.Object.extend({
-    _editorView: null,
-
-    _focused: false,
-
-    _attachPane: function() {
-        if (typeof(this.get('element')) === 'string') {
-            this.set('element', document.getElementById('element'));
+    _attachToElement: function() {
+        var element = this._element;
+        if (typeof(element) === 'string') {
+            element = document.getElementById(element);
+            this._element = element;
+        }
+        if (typeof(element) !== 'object') {
+            throw new Error("Expected a DOM element to attach Bespin to but " +
+                "found " + element);
         }
 
-        var element = this.get('element');
-        if (SC.none('element')) {
-            throw new Error("No element was specified to attach Bespin " +
-                "Embedded to");
-        }
-
-        var options = this.get('options');
-        if (SC.none(options.initialContent)) {
+        var options = this._options;
+        if (typeof(element) !== 'string') {
             options.initialContent = element.innerHTML;
         }
 
-        SC.$(element).css('position', 'relative');
-        element.innerHTML = "";
+        element.style.position = 'relative';
+        element.innerHTML = '';
 
-        this.get('pane').appendTo(element);
+        this.pane.appendTo(element);
     },
 
     _computeLayout: function() {
-        var element = this.get('element');
-
+        var element = this._element;
         var layout = {
             top:    0,
             left:   0,
@@ -67600,8 +68543,8 @@ exports.EmbeddedEditor = SC.Object.extend({
             height: element.clientHeight
         };
 
-        while (!SC.none(element)) {
-            layout.top += element.offsetTop + element.clientTop;
+        while (element !== null) {
+            layout.top  += element.offsetTop + element.clientTop;
             layout.left += element.offsetLeft + element.clientLeft;
             element = element.offsetParent;
         }
@@ -67610,115 +68553,99 @@ exports.EmbeddedEditor = SC.Object.extend({
     },
 
     _createValueProperty: function() {
-        this.__defineGetter__('value', function() {
-            return this._editorView.getPath('layoutManager.textStorage.value');
-        });
-        this.__defineSetter__('value', function(v) {
-            SC.run(function() {
-                this._editorView.setPath('layoutManager.textStorage.value', v);
-            }.bind(this));
-        });
+        this.__defineGetter__('value', this.getValue);
+        this.__defineSetter__('value', this.setValue);
+    },
+
+    _getTextStorage: function() {
+        var currentView = this._session.currentView;
+        return currentView.getPath('layoutManager.textStorage');
     },
 
     _hookWindowResizeEvent: function() {
-        window.addEventListener('resize', this.dimensionsChanged.bind(this),
-            false);
+        window.addEventListener('resize', this.dimensionsChanged, false);
     },
 
-    _setOptions: function() {
-        var editorView = this._editorView;
-        var layoutManager = editorView.get('layoutManager');
-        var options = this.get('options');
+    _unhookWindowResizeEvent: function() {
+        window.removeEventListener('resize', this.dimensionsChanged, false);
+    },
 
-        // initialContent
-        var initialContent = options.initialContent;
-        if (!SC.none(initialContent)) {
-            layoutManager.setPath('textStorage.value', initialContent);
+    /**
+     * @type {Array<string>}
+     *
+     * The component loading order in the embedded environment.
+     */
+    componentOrder: [
+        'environment', 'theme_manager', 'settings', 'key_listener',
+        'dock_view', 'editor_view', 'edit_session'
+    ],
+
+    /**
+     * @type {SC.Pane}
+     *
+     * The pane in which Bespin lives.
+     */
+    pane: null,
+
+    /**
+     * @type {class<SC.Pane>}
+     *
+     * The type of the pane in which Bespin lives. This field is supplied by
+     * the Bespin controller and is instantiated in the init() function.
+     */
+    paneClass: null,
+
+    /** Adds a callback to handle the specified event. */
+    addEventListener: function(eventName, callback) {
+        var events = this._events;
+        if (!(eventName in events)) {
+            console.warn('[Bespin] addEventListener(): unknown event: "' +
+                eventName + '"');
+        } else {
+            events[eventName].add(callback);
         }
+    },
 
-        // noAutoresize
-        var noAutoresize = options.noAutoresize;
-        if (SC.none(noAutoresize)) {
-            noAutoresize = options.dontHookWindowResizeEvent;   // the old name
-        }
-
-        if (SC.none(noAutoresize) || !noAutoresize) {
-            this._hookWindowResizeEvent();
-        }
-
-        // settings
-        var userSettings = options.settings;
-        if (!SC.none(userSettings)) {
-            for (key in userSettings) {
-                settings.set(key, userSettings[key]);
+    /** Initializes the embedded Bespin environment. */
+    createPane: function() {
+        var promise = new Promise();
+        this._elementChosen.then(function() {
+            if (this.pane !== null) {
+                throw new Error('Attempt to instantiate multiple instances ' +
+                    'of Bespin');
             }
-        }
 
-        // stealFocus
-        var stealFocus = options.stealFocus;
-        if (!SC.none(stealFocus) && stealFocus) {
-            window.setTimeout(function() { this.setFocus(true); }.bind(this),
-                1);
-        }
+            var paneClass = this.paneClass;
+            var pane = paneClass.create({
+                _layoutChanged: function() {
+                    this._recomputeLayoutStyle();
+                }.observes('layout'),
 
-        // syntax
-        // TODO: make this a true setting
-        var syntaxManager = layoutManager.get('syntaxManager');
-        var syntax = options.syntax;
-        if (!SC.none(syntax)) {
-            syntaxManager.set('initialContext', syntax);
-        }
-    },
+                _recomputeLayoutStyle: function() {
+                    var layout = this.get('layout');
+                    this.set('layoutStyle', {
+                        width:  layout.width + 'px',
+                        height: layout.height + 'px'
+                    });
+                },
 
-    /**
-     * @property{Node}
-     *
-     * The DOM element to attach to.
-     */
-    element: null,
+                init: function() {
+                    arguments.callee.base.apply(this, arguments);
+                    this._recomputeLayoutStyle();
+                },
 
-    /**
-     * @property{object}
-     *
-     * The user-supplied options.
-     */
-    options: null,
-
-    /**
-     * @property{SC.Pane}
-     *
-     * The pane that the editor is part of.
-     */
-    pane: SC.Pane.extend({
-        _layoutChanged: function() {
-            this._recomputeLayoutStyle();
-        }.observes('layout'),
-
-        _recomputeLayoutStyle: function() {
-            var layout = this.get('layout');
-            this.set('layoutStyle', {
-                width:  "%@px".fmt(layout.width),
-                height: "%@px".fmt(layout.height)
+                layout: this._computeLayout(),
+                layoutStyle: {}
             });
-        },
+            this.pane = pane;
 
-        applicationView: DockView.extend({
-            centerView: EditorView.extend(),
-            dockedViews: []
-        }),
+            this._attachToElement();
+            this._hookWindowResizeEvent();
 
-        childViews: 'applicationView'.w(),
-
-        layoutStyle: {},
-
-        init: function() {
-            arguments.callee.base.apply(this, arguments);
-
-            this.set('defaultResponder', KeyListener.create());
-
-            this._recomputeLayoutStyle();
-        }
-    }),
+            promise.resolve(pane);
+        }.bind(this));
+        return promise;
+    },
 
     /**
      * Triggers a layout change. Call this method whenever the position or size
@@ -67726,9 +68653,9 @@ exports.EmbeddedEditor = SC.Object.extend({
      */
     dimensionsChanged: function() {
         SC.run(function() {
-            var pane = this.get('pane');
+            var pane = this.pane;
             var oldLayout = pane.get('layout');
-            var newLayout = this._computeLayout(this.get("element"));
+            var newLayout = this._computeLayout();
 
             if (!SC.rectsEqual(oldLayout, newLayout)) {
                 pane.adjust(newLayout);
@@ -67737,110 +68664,259 @@ exports.EmbeddedEditor = SC.Object.extend({
         }.bind(this));
     },
 
-    init: function() {
-        if (embeddedEditorInstantiated === true) {
-            throw new Error("Attempt to instantiate multiple instances of " +
-                "Bespin");
+    /** Returns the currently-selected range. */
+    getSelection: function() {
+        var range = this._session.currentView.getSelectedRange(false);
+        return m_range.cloneRange(range);
+    },
+
+    /** Returns the currently-selected text. */
+    getSelectedText: function() {
+        return this.getText(this.getSelection());
+    },
+
+    /** Returns the text within the given range. */
+    getText: function(range) {
+        if (!m_range.isRange(range)) {
+            throw new Error('getText(): expected range but found "' + range +
+                '"');
         }
 
-        embeddedEditorInstantiated = true;
+        var textStorage = this._getTextStorage();
+        return textStorage.getCharacters(m_range.normalizeRange(range));
+    },
 
-        var session = edit_session.EditSession.create();
-        exports.session = session;
+    /** Returns the current text. */
+    getValue: function() {
+        var textView = this._session.currentView;
+        return this._getTextStorage().getValue();
+    },
 
-        var pane = this.get('pane').create({
-            layout: this._computeLayout()
-        });
+    init: function() {
+        this._createValueProperty();
+        this._events = { select: Event(), textChange: Event() };
+    },
 
-        this.set('pane', pane);
+    /** Removes the event listener on the given event. */
+    removeEventListener: function(eventName, callback) {
+        var events = this._events;
+        if (!(eventName in events)) {
+            console.warn('[Bespin] removeEventListener(): unknown event: "' +
+                eventName + '"');
+        } else {
+            events[eventName].remove(callback);
+        }
+    },
 
-        this._attachPane();
+    /**
+     * Replaces the text within a range, as an undoable action.
+     *
+     * @param {Range} range The range to replace.
+     * @param {string} newText The text to insert.
+     * @param {boolean} keepSelection True if the selection should be
+     *     be preserved, false otherwise.
+     */
+    replace: function(range, newText, keepSelection) {
+        if (!m_range.isRange(range)) {
+            throw new Error('replace(): expected range but found "' + range +
+                "'");
+        }
+        if (typeof(text) !== 'string') {
+            throw new Error('replace(): expected text string but found "' +
+                text + '"');
+        }
 
-        var editorView = pane.getPath('applicationView.centerView');
-        this._editorView = editorView;
-
-        var textStorage = editorView.getPath('layoutManager.textStorage');
-        var textView = editorView.get('textView');
-        exports.model = textStorage;
-        exports.view = textView;
-
-        var buffer = edit_session.Buffer.create({ model: textStorage });
-        session.set('currentBuffer', buffer);
-        session.set('currentView', textView);
-        
         SC.run(function() {
-            this._createValueProperty();
-            this._setOptions();
+            var normalized = m_range.normalizeRange(range);
+
+            var view = this._session.currentView;
+            var oldSelection = view.getSelectedRange(false);
+            view.groupChanges(function() {
+                view.replaceCharacters(normalized, newText);
+                if (keepSelection) {
+                    view.setSelection(oldSelection);
+                }
+            });
         }.bind(this));
     },
 
+    /** Replaces the current text selection with the given text. */
+    replaceSelection: function(newText) {
+        if (typeof(newText) !== 'string') {
+            throw new Error('replaceSelection(): expected string but found "' +
+                newText + '"');
+        }
+
+        this.replace(this.getSelection(), text);
+    },
+
+    /** Called by the Bespin controller once the app is fully set up. */
+    sessionInitialized: function(session) {
+        this._session = session;
+
+        var options = this._options;
+        for (var optionName in options) {
+            this.setOption(optionName, options[optionName]);
+        }
+
+        var embeddedEditor = this;
+        this._getTextStorage().addDelegate(SC.Object.create({
+            textStorageEdited: function(sender, oldRange, newRange, newValue) {
+                // FIXME: newValue is not yet supported.
+                var params = {
+                    oldRange: oldRange,
+                    newRange: newRange,
+                    newValue: newValue
+                };
+
+                embeddedEditor._events.textChange(params);
+            }
+        }));
+        session.currentView.addDelegate(SC.Object.create({
+            textViewSelectionChanged: function(sender, selection) {
+                embeddedEditor._events.select({ selection: selection });
+            }
+        }));
+    },
+
+    /** Sets the position of the cursor. */
+    setCursor: function(newPosition) {
+        if (!m_range.isPosition(newPosition)) {
+            throw new Error('setCursor(): expected position but found "' +
+                newPosition + '"');
+        }
+
+        this._session.currentView.moveCursorTo(newPosition);
+    },
+
+    /** Focuses or unfocuses the editor. */
     setFocus: function(makeFocused) {
-        var pane = this.get('pane');
-        if (this._focused === makeFocused) {
+        makeFocused = !!makeFocused;
+
+        var pane = this.pane;
+        var view = this._session.currentView;
+        if (view.get('isFirstResponder') === makeFocused) {
             return;
         }
 
-        this._focused = makeFocused;
         if (makeFocused) {
             pane.becomeKeyPane();
-            this._editorView.get('textView').focus();
+            view.focus();
         } else {
             pane.resignKeyPane();
         }
     },
 
-    /**
-     * jump to the line number given. This will clear any selected
-     * ranges from the view. The line number is 1-based.
-     */
-    setLineNumber: function(line) {
-        SC.RunLoop.begin();
-        var textView = this.getPath("pane.editorView.textView");
-        var point = {row: line-1, column: 0, partialFraction: 0};
-        textView.setSelection([{start: point, end: point}]);
-        SC.RunLoop.end();
+    /** Scrolls and moves the insertion point to the given line number. */
+    setLineNumber: function(lineNumber) {
+        var newPosition = { row: lineNumber - 1, col: 0 };
+        this._session.currentView.moveCursorTo(newPosition);
     },
 
-    /**
-     * Changes a setting.
-     */
+    /** Changes the value of an option. */
+    setOption: function(name, value) {
+        switch (name) {
+        case 'initialContent':
+            this.setValue(value);
+            break;
+
+        case 'noAutoresize':
+            if (value) {
+                this._unhookWindowResizeEvent();
+            } else {
+                this._hookWindowResizeEvent();
+            }
+            break;
+
+        case 'settings':
+            for (var settingName in value) {
+                this.setSetting(settingName, value[settingName]);
+            }
+            break;
+
+        case 'stealFocus':
+            this.setFocus(value);
+            break;
+
+        case 'syntax':
+            this.setSyntax(value);
+            break;
+
+        default:
+            console.warn('[Bespin] unknown setting: "' + name + '"');
+            break;
+        }
+    },
+
+    /** Alters the selection. */
+    setSelection: function(newSelection) {
+        if (!m_range.isRange(newSelection)) {
+            throw new Error('setSelection(): selection must be supplied');
+        }
+
+        this._session.currentView.setSelection(newSelection);
+    },
+
+    /** Changes a setting. */
     setSetting: function(key, value) {
-        if (SC.none(key)) {
-            throw new Error("setSetting: key must be supplied");
+        if (key === null || key === undefined) {
+            throw new Error('setSetting(): key must be supplied');
         }
-        if (SC.none(value)) {
-            throw new Error("setSetting: value must be supplied");
-        }
-
-        SC.run(function() { settings.set(key, value); });
-    },
-
-    /**
-     * Sets the initial syntax highlighting context (i.e. the language).
-     */
-     setSyntax: function(syntax) {
-        if (SC.none(syntax)) {
-            throw new Error("setSyntax: syntax must be supplied");
+        if (value === null || value === undefined) {
+            throw new Error('setSetting(): value must be supplied');
         }
 
         SC.run(function() {
-            this._editorView.setPath('layoutManager.syntaxManager.' +
-                                                'initialContext', syntax);
+            var settings = require('settings').settings;
+            settings.set(key, value);
+        });
+    },
+
+    /** Sets the initial syntax highlighting context (i.e. the language). */
+    setSyntax: function(syntax) {
+        if (syntax === null || syntax === undefined) {
+            throw new Error('setSyntax(): syntax must be supplied');
+        }
+
+        SC.run(function() {
+            var view = this._session.currentView;
+            var syntaxManager = view.getPath('layoutManager.syntaxManager');
+            syntaxManager.set('initialContext', syntax);
         }.bind(this));
+    },
+
+    /**
+     * Sets the text to the given value and moves the cursor to the beginning
+     * of the buffer.
+     */
+    setValue: function(newValue) {
+        SC.run(function() {
+            var textView = this._session.currentView;
+            textView.getPath('layoutManager.textStorage').setValue(newValue);
+            textView.moveCursorTo({ row: 0, col: 0 });
+        }.bind(this));
+    },
+
+    /** Replaces an element with the Bespin editor. */
+    useBespin: function(element, options) {
+        if (options === null || options === undefined) {
+            options = {};
+        }
+
+        this._element = element;
+        this._options = options;
+
+        this._elementChosen.resolve();
+
+        return this;
     }
 });
 
-exports.session = null;
+exports.embeddedEditor = embeddedEditor;
+embeddedEditor.init();
 
-/**
- * Initialize a Bespin component on a given element.
- */
-exports.useBespin = function(element, options) {
-    return exports.EmbeddedEditor.create({
-        element: element,
-        options: SC.none(options) ? {} : options
-    });
-};
+/** Replaces an element with the Bespin editor. */
+exports.useBespin = embeddedEditor.useBespin;
 
 
 });
@@ -67854,7 +68930,7 @@ tiki.module("html:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -67891,19 +68967,10 @@ tiki.module("html:index",function(require,exports,module) {
     },
     "provides": [
         {
-            "ep": "fileextension",
-            "name": "htm",
-            "syntax": "html"
-        },
-        {
-            "ep": "fileextension",
-            "name": "html",
-            "syntax": "html"
-        },
-        {
             "ep": "syntax",
             "name": "html",
-            "pointer": "#HTMLSyntax"
+            "pointer": "#HTMLSyntax",
+            "fileexts": [ "htm", "html" ]
         }
     ]
 });
@@ -67923,7 +68990,7 @@ var states = {};
 //
 
 var createTagStates = function(prefix, interiorActions) {
-    states[prefix + "_beforeAttrName"] = [
+    states[prefix + '_beforeAttrName'] = [
         {
             regex:  /^\s+/,
             tag:    'plain'
@@ -67931,7 +68998,7 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^\//,
             tag:    'operator',
-            then:   prefix + "_selfClosingStartTag"
+            then:   prefix + '_selfClosingStartTag'
         },
         {
             regex:  /^>/,
@@ -67941,26 +69008,26 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^./,
             tag:    'keyword',
-            then:   prefix + "_attrName"
+            then:   prefix + '_attrName'
         }
     ];
 
     // 10.2.4.35 Attribute name state
-    states[prefix + "_attrName"] = [
+    states[prefix + '_attrName'] = [
         {
             regex:  /^\s+/,
             tag:    'plain',
-            then:   prefix + "_afterAttrName"
+            then:   prefix + '_afterAttrName'
         },
         {
             regex:  /^\//,
             tag:    'operator',
-            then:   prefix + "_selfClosingStartTag"
+            then:   prefix + '_selfClosingStartTag'
         },
         {
             regex:  /^=/,
             tag:    'operator',
-            then:   prefix + "_beforeAttrValue"
+            then:   prefix + '_beforeAttrValue'
         },
         {
             regex:  /^>/,
@@ -67977,7 +69044,7 @@ var createTagStates = function(prefix, interiorActions) {
         }
     ];
 
-    states[prefix + "_afterAttrName"] = [
+    states[prefix + '_afterAttrName'] = [
         {
             regex:  /^\s+/,
             tag:    'plain'
@@ -67985,12 +69052,12 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^\//,
             tag:    'operator',
-            then:   prefix + "_selfClosingStartTag"
+            then:   prefix + '_selfClosingStartTag'
         },
         {
             regex:  /^=/,
             tag:    'operator',
-            then:   prefix + "_beforeAttrValue"
+            then:   prefix + '_beforeAttrValue'
         },
         {
             regex:  /^>/,
@@ -68000,11 +69067,11 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^./,
             tag:    'keyword',
-            then:   prefix + "_attrName"
+            then:   prefix + '_attrName'
         }
     ];
 
-    states[prefix + "_beforeAttrValue"] = [
+    states[prefix + '_beforeAttrValue'] = [
         {
             regex:  /^\s+/,
             tag:    'plain'
@@ -68012,17 +69079,17 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^"/,
             tag:    'string',
-            then:   prefix + "_attrValueQQ"
+            then:   prefix + '_attrValueQQ'
         },
         {
             regex:  /^(?=&)/,
             tag:    'plain',
-            then:   prefix + "_attrValueU"
+            then:   prefix + '_attrValueU'
         },
         {
             regex:  /^'/,
             tag:    'string',
-            then:   prefix + "_attrValueQ"
+            then:   prefix + '_attrValueQ'
         },
         {
             regex:  /^>/,
@@ -68032,15 +69099,15 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^./,
             tag:    'string',
-            then:   prefix + "_attrValueU"
+            then:   prefix + '_attrValueU'
         }
     ];
 
-    states[prefix + "_attrValueQQ"] = [
+    states[prefix + '_attrValueQQ'] = [
         {
             regex:  /^"/,
             tag:    'string',
-            then:   prefix + "_afterAttrValueQ"
+            then:   prefix + '_afterAttrValueQ'
         },
         {
             regex:  /^[^"]+/,
@@ -68048,11 +69115,11 @@ var createTagStates = function(prefix, interiorActions) {
         }
     ];
 
-    states[prefix + "_attrValueQ"] = [
+    states[prefix + '_attrValueQ'] = [
         {
             regex:  /^'/,
             tag:    'string',
-            then:   prefix + "_afterAttrValueQ"
+            then:   prefix + '_afterAttrValueQ'
         },
         {
             regex:  /^[^']+/,
@@ -68060,11 +69127,11 @@ var createTagStates = function(prefix, interiorActions) {
         }
     ];
 
-    states[prefix + "_attrValueU"] = [
+    states[prefix + '_attrValueU'] = [
         {
             regex:  /^\s/,
             tag:    'string',
-            then:   prefix + "_beforeAttrName"
+            then:   prefix + '_beforeAttrName'
         },
         {
             regex:  /^>/,
@@ -68077,16 +69144,16 @@ var createTagStates = function(prefix, interiorActions) {
         }
     ];
 
-    states[prefix + "_afterAttrValueQ"] = [
+    states[prefix + '_afterAttrValueQ'] = [
         {
             regex:  /^\s/,
             tag:    'plain',
-            then:   prefix + "_beforeAttrName"
+            then:   prefix + '_beforeAttrName'
         },
         {
             regex:  /^\//,
             tag:    'operator',
-            then:   prefix + "_selfClosingStartTag"
+            then:   prefix + '_selfClosingStartTag'
         },
         {
             regex:  /^>/,
@@ -68096,12 +69163,12 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^(?=.)/,
             tag:    'operator',
-            then:   prefix + "_beforeAttrName"
+            then:   prefix + '_beforeAttrName'
         }
     ];
 
     // 10.2.4.43 Self-closing start tag state
-    states[prefix + "_selfClosingStartTag"] = [
+    states[prefix + '_selfClosingStartTag'] = [
         {
             regex:  /^>/,
             tag:    'operator',
@@ -68110,7 +69177,7 @@ var createTagStates = function(prefix, interiorActions) {
         {
             regex:  /^./,
             tag:    'error',
-            then:   prefix + "_beforeAttrName"
+            then:   prefix + '_beforeAttrName'
         }
     ];
 };
@@ -68618,8 +69685,8 @@ states = {
     ]
 };
 
-createTagStates("normal", 'start');
-createTagStates("script", 'scriptData start:js');
+createTagStates('normal', 'start');
+createTagStates('script', 'scriptData start:js');
 
 /**
  * @class
@@ -68641,7 +69708,7 @@ tiki.module("javascript:index",function(require,exports,module) {
  * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS" basis,
+ * Software distributed under the License is distributed on an 'AS IS' basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
  * for the specific language governing rights and limitations under the
  * License.
@@ -68678,14 +69745,10 @@ tiki.module("javascript:index",function(require,exports,module) {
     },
     "provides": [
         {
-            "ep": "fileextension",
-            "name": "js",
-            "syntax": "js"
-        },
-        {
             "ep": "syntax",
             "name": "js",
-            "pointer": "#JSSyntax"
+            "pointer": "#JSSyntax",
+            "fileexts": [ "js" ]
         }
     ]
 });
@@ -68785,7 +69848,7 @@ exports.JSSyntax = StandardSyntax.create({
 
 });
 
-tiki.require("bespin:plugins").catalog.load({"text_editor": {"resourceURL": "resources/text_editor/", "description": "Canvas-based text editor component and many common editing commands", "dependencies": {"delegate_support": "0.0", "settings": "0.0", "canon": "0.0", "rangeutils": "0.0", "appsupport": "0.0", "syntax_manager": "0.0"}, "testmodules": [], "provides": [{"predicates": {"isTextView": true}, "pointer": "commands/editing#backspace", "ep": "command", "key": "backspace", "name": "backspace"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#deleteCommand", "ep": "command", "key": "delete", "name": "delete"}, {"description": "Delete all lines currently selected", "key": "ctrl_d", "predicates": {"isTextView": true}, "pointer": "commands/editing#deleteLines", "ep": "command", "name": "deletelines"}, {"description": "Create a new, empty line below the current one", "key": "ctrl_return", "predicates": {"isTextView": true}, "pointer": "commands/editing#openLine", "ep": "command", "name": "openline"}, {"params": [{"defaultValue": "", "type": "text", "name": "text", "description": "The text to insert"}], "pointer": "commands/editing#insertText", "ep": "command", "name": "insertText"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#newline", "ep": "command", "key": "return", "name": "newline"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#tab", "ep": "command", "key": "tab", "name": "tab"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "move"}, {"description": "Search for text within this buffer", "params": [{"type": "text", "name": "value", "description": "string to search for"}], "key": "ctrl_f", "pointer": "commands/editor#findCommand", "ep": "command", "name": "find"}, {"description": "Repeat the last search (forward)", "pointer": "commands/editor#findNextCommand", "ep": "command", "key": "ctrl_g", "name": "findnext"}, {"description": "Repeat the last search (backward)", "pointer": "commands/editor#findPrevCommand", "ep": "command", "key": "ctrl_shift_g", "name": "findprev"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDown", "ep": "command", "key": "down", "name": "move down"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLeft", "ep": "command", "key": "left", "name": "move left"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveRight", "ep": "command", "key": "right", "name": "move right"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveUp", "ep": "command", "key": "up", "name": "move up"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "select"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDown", "ep": "command", "key": "shift_down", "name": "select down"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLeft", "ep": "command", "key": "shift_left", "name": "select left"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectRight", "ep": "command", "key": "shift_right", "name": "select right"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectUp", "ep": "command", "key": "shift_up", "name": "select up"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLineEnd", "ep": "command", "key": ["end", "ctrl_right"], "name": "move lineend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLineEnd", "ep": "command", "key": ["shift_end", "ctrl_shift_right"], "name": "select lineend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDocEnd", "ep": "command", "key": "ctrl_down", "name": "move docend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDocEnd", "ep": "command", "key": "ctrl_shift_down", "name": "select docend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLineStart", "ep": "command", "key": ["home", "ctrl_left"], "name": "move linestart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLineStart", "ep": "command", "key": ["shift_home", "ctrl_shift_left"], "name": "select linestart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDocStart", "ep": "command", "key": "ctrl_up", "name": "move docstart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDocStart", "ep": "command", "key": "ctrl_shift_up", "name": "select docstart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveNextWord", "ep": "command", "key": ["alt_right"], "name": "move nextword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectNextWord", "ep": "command", "key": ["alt_shift_right"], "name": "select nextword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#movePreviousWord", "ep": "command", "key": ["alt_left"], "name": "move prevword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectPreviousWord", "ep": "command", "key": ["alt_shift_left"], "name": "select prevword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectAll", "ep": "command", "key": ["ctrl_a", "meta_a"], "name": "select all"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "scroll"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollDocStart", "ep": "command", "key": "ctrl_home", "name": "scroll start"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollDocEnd", "ep": "command", "key": "ctrl_end", "name": "scroll end"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollPageDown", "ep": "command", "key": "pagedown", "name": "scroll down"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollPageUp", "ep": "command", "key": "pageup", "name": "scroll up"}, {"pointer": "commands/editor#lcCommand", "description": "Change all selected text to lowercase", "withKey": "CMD SHIFT L", "ep": "command", "name": "lc"}, {"pointer": "commands/editor#detabCommand", "description": "Convert tabs to spaces.", "params": [{"defaultValue": null, "type": "text", "name": "tabsize", "description": "Optionally, specify a tab size. (Defaults to setting.)"}], "ep": "command", "name": "detab"}, {"pointer": "commands/editor#entabCommand", "description": "Convert spaces to tabs.", "params": [{"defaultValue": null, "type": "text", "name": "tabsize", "description": "Optionally, specify a tab size. (Defaults to setting.)"}], "ep": "command", "name": "entab"}, {"description": "move it! make the editor head to a line number.", "params": [{"type": "text", "name": "line", "description": "add the line number to move to in the file"}], "key": "ctrl_l", "pointer": "commands/editor#gotoCommand", "ep": "command", "name": "goto"}, {"pointer": "commands/editor#trimCommand", "description": "trim trailing or leading whitespace from each line in selection", "params": [{"defaultValue": "both", "type": {"data": [{"name": "left"}, {"name": "right"}, {"name": "both"}], "name": "selection"}, "name": "side", "description": "Do we trim from the left, right or both"}], "ep": "command", "name": "trim"}, {"pointer": "commands/editor#ucCommand", "description": "Change all selected text to uppercase", "withKey": "CMD SHIFT U", "ep": "command", "name": "uc"}, {"description": "The distance in characters between each tab", "defaultValue": 8, "type": "number", "ep": "setting", "name": "tabstop"}, {"description": "Customize the keymapping", "defaultValue": "{}", "type": "text", "ep": "setting", "name": "customKeymapping"}, {"description": "The keymapping to use", "defaultValue": "standard", "type": "text", "ep": "setting", "name": "keymapping"}, {"description": "The editor font size in pixels", "defaultValue": 14, "type": "number", "ep": "setting", "name": "fontsize"}, {"description": "The editor font face", "defaultValue": "Monaco, Lucida Console, monospace", "type": "text", "ep": "setting", "name": "fontface"}], "type": "plugins/supported", "name": "text_editor"}, "delegate_support": {"testmodules": [], "type": "plugins/supported", "resourceURL": "resources/delegate_support/", "description": "Simple support for multiple delegates on an object", "name": "delegate_support"}, "embedded": {"resourceURL": "resources/embedded/", "name": "embedded", "dependencies": {"appsupport": "0.0", "text_editor": "0.0", "dock_view": "0.0", "edit_session": "0.0", "settings": "0.0"}, "testmodules": [], "provides": [{"action": "value", "pointer": "#session", "ep": "factory", "name": "session"}], "type": "plugins/embedded"}, "settings": {"resourceURL": "resources/settings/", "description": "Infrastructure and commands for managing user preferences", "dependencies": {"types": "0.0"}, "testmodules": [], "provides": [{"indexOn": "name", "register": "memory#addSetting", "ep": "extensionpoint", "name": "setting", "description": "A Choice is something that the application offers as a way to customize how it works"}, {"description": "A test setting", "defaultValue": "bb", "type": {"data": ["aa", "bb", "cc"], "name": "selection"}, "ep": "setting", "name": "test"}, {"pointer": "commands#setCommand", "description": "define and show settings", "params": [{"defaultValue": null, "type": {"pointer": "settings:memory#getSettings", "name": "selection"}, "name": "setting", "description": "The name of the setting to display or alter"}, {"defaultValue": null, "type": {"pointer": "settings:memory#getTypeSpecFromAssignment", "name": "deferred"}, "name": "value", "description": "The new value for the chosen setting"}], "ep": "command", "name": "set"}, {"pointer": "commands#unsetCommand", "description": "unset a setting entirely", "params": [{"type": {"pointer": "settings:memory#getSettings", "name": "selection"}, "name": "setting", "description": "The name of the setting to return to defaults"}], "ep": "command", "name": "unset"}], "type": "plugins/supported", "name": "settings"}, "javascript": {"resourceURL": "resources/javascript/", "description": "JavaScript syntax highlighter", "dependencies": {"syntax_manager": "0.0"}, "testmodules": [], "provides": [{"syntax": "js", "ep": "fileextension", "name": "js"}, {"pointer": "#JSSyntax", "ep": "syntax", "name": "js"}], "type": "plugins/supported", "name": "javascript"}, "canon": {"resourceURL": "resources/canon/", "description": "Manages commands and their keyboard shortcuts", "dependencies": {"types": "0.0", "settings": "0.0"}, "testmodules": ["tests/testKeyboard"], "provides": [{"indexOn": "name", "description": "A command is a bit of functionality with optional typed arguments which can do something small like moving the cursor around the screen, or large like cloning a project from VCS.", "ep": "extensionpoint", "name": "command"}, {"description": "How many typed commands do we recall for reference?", "defaultValue": 50, "type": "number", "ep": "setting", "name": "historyLength"}], "type": "plugins/supported", "name": "canon"}, "rangeutils": {"testmodules": [], "type": "plugins/supported", "resourceURL": "resources/rangeutils/", "description": "Utility functions for dealing with ranges of text", "name": "rangeutils"}, "dock_view": {"testmodules": [], "type": "plugins/supported", "resourceURL": "resources/dock_view/", "description": "A view that supports docked panels on the sides", "name": "dock_view"}, "html": {"resourceURL": "resources/html/", "description": "HTML syntax highlighter", "dependencies": {"syntax_manager": "0.0"}, "testmodules": [], "provides": [{"syntax": "html", "ep": "fileextension", "name": "htm"}, {"syntax": "html", "ep": "fileextension", "name": "html"}, {"pointer": "#HTMLSyntax", "ep": "syntax", "name": "html"}], "type": "plugins/supported", "name": "html"}, "filesystem": {"resourceURL": "resources/filesystem/", "description": "Provides the file and directory model used within Bespin", "dependencies": {"types": "0.0"}, "testmodules": ["tests/testFileManagement", "tests/testPathUtils"], "provides": [{"description": "A pointer to a file which we believe to already exist", "pointer": "types#existingFile", "ep": "type", "name": "existingFile"}], "type": "plugins/supported", "name": "filesystem"}, "appsupport": {"resourceURL": "resources/appsupport/", "description": "Common services used in the editor application", "dependencies": {"canon": "0.0"}, "testmodules": [], "provides": [{"pointer": "controllers/undomanager#undoManagerCommand", "ep": "command", "key": ["ctrl_shift_z"], "name": "redo"}, {"pointer": "controllers/undomanager#undoManagerCommand", "ep": "command", "key": ["ctrl_z"], "name": "undo"}], "type": "plugins/supported", "name": "appsupport"}, "edit_session": {"resourceURL": "resources/edit_session/", "description": "Ties together the files being edited with the views on screen", "dependencies": {"text_editor": "0.0", "delegate_support": "0.0", "filesystem": "0.0"}, "testmodules": ["tests/testHistory", "tests/testSession"], "provides": [{"ep": "extensionpoint", "name": "bufferFileChanged", "description": "Notifies that the current file is changed."}], "type": "plugins/supported", "name": "edit_session"}, "types": {"resourceURL": "resources/types/", "description": "Defines parameter types for commands", "testmodules": ["tests/testBasic", "tests/testTypes"], "provides": [{"indexOn": "name", "description": "Commands can accept various arguments that the user enters or that are automatically supplied by the environment. Those arguments have types that define how they are supplied or completed. The pointer points to an object with methods convert(str value) and getDefault(). Both functions have `this` set to the command's `takes` parameter. If getDefault is not defined, the default on the command's `takes` is used, if there is one. The object can have a noInput property that is set to true to reflect that this type is provided directly by the system. getDefault must be defined in that case.", "ep": "extensionpoint", "name": "type"}, {"description": "Text that the user needs to enter.", "pointer": "basic#text", "ep": "type", "name": "text"}, {"description": "A JavaScript number", "pointer": "basic#number", "ep": "type", "name": "number"}, {"description": "A true/false value", "pointer": "basic#bool", "ep": "type", "name": "boolean"}, {"description": "An object that converts via JavaScript", "pointer": "basic#object", "ep": "type", "name": "object"}, {"description": "A string that is constrained to be one of a number of pre-defined values", "pointer": "basic#selection", "ep": "type", "name": "selection"}, {"description": "A type which we don't understand from the outset, but which we hope context can help us with", "ep": "type", "name": "deferred"}], "type": "plugins/supported", "name": "types"}, "syntax_manager": {"resourceURL": "resources/syntax_manager/", "description": "Provides syntax highlighting services for the editor", "dependencies": {"rangeutils": "0.0", "delegate_support": "0.0"}, "testmodules": [], "provides": [{"register": "controllers/syntaxdirectory#discoveredNewSyntax", "ep": "extensionhandler", "name": "syntax"}, {"indexOn": "name", "ep": "extensionpoint", "name": "fileextension"}], "type": "plugins/supported", "name": "syntax_manager"}});
+SC.ready(function() {tiki.require("bespin:plugins").catalog.loadMetadata({"text_editor": {"resourceURL": "resources/text_editor/", "description": "Canvas-based text editor component and many common editing commands", "dependencies": {"delegate_support": "0.0", "settings": "0.0", "canon": "0.0", "rangeutils": "0.0", "appsupport": "0.0", "syntax_manager": "0.0"}, "testmodules": [], "provides": [{"pointer": "views/editor#EditorView", "ep": "appcomponent", "name": "editor_view"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#backspace", "ep": "command", "key": "backspace", "name": "backspace"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#deleteCommand", "ep": "command", "key": "delete", "name": "delete"}, {"description": "Delete all lines currently selected", "key": "ctrl_d", "predicates": {"isTextView": true}, "pointer": "commands/editing#deleteLines", "ep": "command", "name": "deletelines"}, {"description": "Create a new, empty line below the current one", "key": "ctrl_return", "predicates": {"isTextView": true}, "pointer": "commands/editing#openLine", "ep": "command", "name": "openline"}, {"description": "Join the current line with the following", "key": "ctrl_shift_j", "predicates": {"isTextView": true}, "pointer": "commands/editing#joinLines", "ep": "command", "name": "openline"}, {"params": [{"defaultValue": "", "type": "text", "name": "text", "description": "The text to insert"}], "pointer": "commands/editing#insertText", "ep": "command", "name": "insertText"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#newline", "ep": "command", "key": "return", "name": "newline"}, {"predicates": {"isTextView": true}, "pointer": "commands/editing#tab", "ep": "command", "key": "tab", "name": "tab"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "move"}, {"description": "Search for text within this buffer", "params": [{"type": "text", "name": "value", "description": "string to search for"}], "key": "ctrl_f", "pointer": "commands/editor#findCommand", "ep": "command", "name": "find"}, {"description": "Repeat the last search (forward)", "pointer": "commands/editor#findNextCommand", "ep": "command", "key": "ctrl_g", "name": "findnext"}, {"description": "Repeat the last search (backward)", "pointer": "commands/editor#findPrevCommand", "ep": "command", "key": "ctrl_shift_g", "name": "findprev"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDown", "ep": "command", "key": "down", "name": "move down"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLeft", "ep": "command", "key": "left", "name": "move left"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveRight", "ep": "command", "key": "right", "name": "move right"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveUp", "ep": "command", "key": "up", "name": "move up"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "select"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDown", "ep": "command", "key": "shift_down", "name": "select down"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLeft", "ep": "command", "key": "shift_left", "name": "select left"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectRight", "ep": "command", "key": "shift_right", "name": "select right"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectUp", "ep": "command", "key": "shift_up", "name": "select up"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLineEnd", "ep": "command", "key": ["end", "ctrl_right"], "name": "move lineend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLineEnd", "ep": "command", "key": ["shift_end", "ctrl_shift_right"], "name": "select lineend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDocEnd", "ep": "command", "key": "ctrl_down", "name": "move docend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDocEnd", "ep": "command", "key": "ctrl_shift_down", "name": "select docend"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveLineStart", "ep": "command", "key": ["home", "ctrl_left"], "name": "move linestart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectLineStart", "ep": "command", "key": ["shift_home", "ctrl_shift_left"], "name": "select linestart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveDocStart", "ep": "command", "key": "ctrl_up", "name": "move docstart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectDocStart", "ep": "command", "key": "ctrl_shift_up", "name": "select docstart"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#moveNextWord", "ep": "command", "key": ["alt_right"], "name": "move nextword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectNextWord", "ep": "command", "key": ["alt_shift_right"], "name": "select nextword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#movePreviousWord", "ep": "command", "key": ["alt_left"], "name": "move prevword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectPreviousWord", "ep": "command", "key": ["alt_shift_left"], "name": "select prevword"}, {"predicates": {"isTextView": true}, "pointer": "commands/movement#selectAll", "ep": "command", "key": ["ctrl_a", "meta_a"], "name": "select all"}, {"predicates": {"isTextView": true}, "ep": "command", "name": "scroll"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollDocStart", "ep": "command", "key": "ctrl_home", "name": "scroll start"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollDocEnd", "ep": "command", "key": "ctrl_end", "name": "scroll end"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollPageDown", "ep": "command", "key": "pagedown", "name": "scroll down"}, {"predicates": {"isTextView": true}, "pointer": "commands/scrolling#scrollPageUp", "ep": "command", "key": "pageup", "name": "scroll up"}, {"pointer": "commands/editor#lcCommand", "description": "Change all selected text to lowercase", "withKey": "CMD SHIFT L", "ep": "command", "name": "lc"}, {"pointer": "commands/editor#detabCommand", "description": "Convert tabs to spaces.", "params": [{"defaultValue": null, "type": "text", "name": "tabsize", "description": "Optionally, specify a tab size. (Defaults to setting.)"}], "ep": "command", "name": "detab"}, {"pointer": "commands/editor#entabCommand", "description": "Convert spaces to tabs.", "params": [{"defaultValue": null, "type": "text", "name": "tabsize", "description": "Optionally, specify a tab size. (Defaults to setting.)"}], "ep": "command", "name": "entab"}, {"description": "move it! make the editor head to a line number.", "params": [{"type": "text", "name": "line", "description": "add the line number to move to in the file"}], "key": "ctrl_l", "pointer": "commands/editor#gotoCommand", "ep": "command", "name": "goto"}, {"pointer": "commands/editor#trimCommand", "description": "trim trailing or leading whitespace from each line in selection", "params": [{"defaultValue": "both", "type": {"data": [{"name": "left"}, {"name": "right"}, {"name": "both"}], "name": "selection"}, "name": "side", "description": "Do we trim from the left, right or both"}], "ep": "command", "name": "trim"}, {"pointer": "commands/editor#ucCommand", "description": "Change all selected text to uppercase", "withKey": "CMD SHIFT U", "ep": "command", "name": "uc"}, {"description": "The distance in characters between each tab", "defaultValue": 8, "type": "number", "ep": "setting", "name": "tabstop"}, {"description": "Customize the keymapping", "defaultValue": "{}", "type": "text", "ep": "setting", "name": "customKeymapping"}, {"description": "The keymapping to use", "defaultValue": "standard", "type": "text", "ep": "setting", "name": "keymapping"}, {"description": "The editor font size in pixels", "defaultValue": 14, "type": "number", "ep": "setting", "name": "fontsize"}, {"description": "The editor font face", "defaultValue": "Monaco, Lucida Console, monospace", "type": "text", "ep": "setting", "name": "fontface"}], "type": "plugins/supported", "name": "text_editor"}, "delegate_support": {"testmodules": [], "type": "plugins/supported", "resourceURL": "resources/delegate_support/", "description": "Simple support for multiple delegates on an object", "name": "delegate_support"}, "embedded": {"resourceURL": "resources/embedded/", "description": "The environment for an embedded Bespin instance", "dependencies": {"text_editor": "0.0", "settings": "0.0", "theme_manager": "0.0", "events": "0.0", "rangeutils": "0.0", "traits": "0.0", "dock_view": "0.0", "screen_theme": "0.0", "appsupport": "0.0", "edit_session": "0.0", "keylistener": "0.0"}, "testmodules": [], "provides": [{"pointer": "#embeddedEditor", "ep": "appcomponent", "name": "environment"}], "type": "plugins/embedded", "name": "embedded"}, "settings": {"resourceURL": "resources/settings/", "description": "Infrastructure and commands for managing user preferences", "dependencies": {"types": "0.0"}, "testmodules": [], "provides": [{"pointer": "index#settings", "ep": "appcomponent", "name": "settings", "description": "Storage for the customizable Bespin settings"}, {"indexOn": "name", "register": "memory#addSetting", "ep": "extensionpoint", "name": "setting", "description": "A Choice is something that the application offers as a way to customize how it works"}, {"pointer": "commands#setCommand", "description": "define and show settings", "params": [{"defaultValue": null, "type": {"pointer": "settings:memory#getSettings", "name": "selection"}, "name": "setting", "description": "The name of the setting to display or alter"}, {"defaultValue": null, "type": {"pointer": "settings:memory#getTypeSpecFromAssignment", "name": "deferred"}, "name": "value", "description": "The new value for the chosen setting"}], "ep": "command", "name": "set"}, {"pointer": "commands#unsetCommand", "description": "unset a setting entirely", "params": [{"type": {"pointer": "settings:memory#getSettings", "name": "selection"}, "name": "setting", "description": "The name of the setting to return to defaults"}], "ep": "command", "name": "unset"}], "type": "plugins/supported", "name": "settings"}, "javascript": {"resourceURL": "resources/javascript/", "description": "JavaScript syntax highlighter", "dependencies": {"syntax_manager": "0.0"}, "testmodules": [], "provides": [{"pointer": "#JSSyntax", "ep": "syntax", "fileexts": ["js"], "name": "js"}], "type": "plugins/supported", "name": "javascript"}, "canon": {"resourceURL": "resources/canon/", "description": "Manages commands and their keyboard shortcuts", "dependencies": {"appsupport": "0.0", "types": "0.0", "settings": "0.0"}, "testmodules": ["tests/testKeyboard"], "provides": [{"indexOn": "name", "description": "A command is a bit of functionality with optional typed arguments which can do something small like moving the cursor around the screen, or large like cloning a project from VCS.", "ep": "extensionpoint", "name": "command"}, {"description": "How many typed commands do we recall for reference?", "defaultValue": 50, "type": "number", "ep": "setting", "name": "historyLength"}], "type": "plugins/supported", "name": "canon"}, "dock_view": {"resourceURL": "resources/dock_view/", "description": "A view that supports docked panels on the sides", "testmodules": [], "provides": [{"pointer": "#DockView", "ep": "appcomponent", "name": "dock_view"}], "type": "plugins/supported", "name": "dock_view"}, "edit_session": {"resourceURL": "resources/edit_session/", "description": "Ties together the files being edited with the views on screen", "dependencies": {"text_editor": "0.0", "appsupport": "0.0", "delegate_support": "0.0", "filesystem": "0.0"}, "testmodules": ["tests/testHistory", "tests/testSession"], "provides": [{"pointer": "index#editSessionClasses", "ep": "appcomponent", "name": "edit_session"}, {"ep": "extensionpoint", "name": "bufferFileChanged", "description": "Notifies that the current file is changed."}], "type": "plugins/supported", "name": "edit_session"}, "rangeutils": {"testmodules": ["tests/test"], "type": "plugins/supported", "resourceURL": "resources/rangeutils/", "description": "Utility functions for dealing with ranges of text", "name": "rangeutils"}, "traits": {"resourceURL": "resources/traits/", "description": "Traits library, traitsjs.org", "dependencies": {}, "testmodules": [], "provides": [], "type": "plugins/thirdparty", "name": "traits"}, "theme_manager": {"testmodules": [], "resourceURL": "resources/theme_manager/", "name": "theme_manager", "provides": [{"pointer": "#themeManager", "ep": "appcomponent", "name": "theme_manager", "description": "Applies styles to the Bespin UI"}, {"register": "#registerTheme", "ep": "extensionhandler", "name": "theme"}, {"indexOn": "name", "ep": "extensionpoint", "name": "theme"}], "type": "plugins/supported"}, "html": {"resourceURL": "resources/html/", "description": "HTML syntax highlighter", "dependencies": {"syntax_manager": "0.0"}, "testmodules": [], "provides": [{"pointer": "#HTMLSyntax", "ep": "syntax", "fileexts": ["htm", "html"], "name": "html"}], "type": "plugins/supported", "name": "html"}, "screen_theme": {"resourceURL": "resources/screen_theme/", "name": "screen_theme", "dependencies": {"theme_manager": "0.0"}, "testmodules": [], "provides": [{"pointer": "#ScreenTheme", "ep": "theme", "name": "Screen"}], "type": "plugins/supported"}, "filesystem": {"resourceURL": "resources/filesystem/", "description": "Provides the file and directory model used within Bespin", "dependencies": {"types": "0.0"}, "testmodules": ["tests/testFileManagement", "tests/testPathUtils"], "provides": [{"description": "A pointer to a file which we believe to already exist", "pointer": "types#existingFile", "ep": "type", "name": "existingFile"}], "type": "plugins/supported", "name": "filesystem"}, "appsupport": {"resourceURL": "resources/appsupport/", "description": "Common services used in the editor application", "dependencies": {"traits": "0.0"}, "testmodules": [], "provides": [{"unregister": "controllers/bespin#unregisterAppComponent", "register": "controllers/bespin#registerAppComponent", "ep": "extensionhandler", "name": "appcomponent"}, {"pointer": "controllers/undomanager#undoManagerCommand", "ep": "command", "key": ["ctrl_shift_z"], "name": "redo"}, {"pointer": "controllers/undomanager#undoManagerCommand", "ep": "command", "key": ["ctrl_z"], "name": "undo"}], "type": "plugins/supported", "name": "appsupport"}, "keylistener": {"resourceURL": "resources/keylistener/", "description": "Routes keys to the appropriate destination", "dependencies": {"canon": "0.0"}, "testmodules": [], "provides": [{"pointer": "#KeyListener", "ep": "appcomponent", "name": "key_listener"}], "type": "plugins/supported", "name": "keylistener"}, "events": {"resourceURL": "resources/events/", "description": "Dead simple event implementation", "dependencies": {"traits": "0.0"}, "testmodules": ["tests/test"], "provides": [], "type": "plugins/supported", "name": "events"}, "types": {"resourceURL": "resources/types/", "description": "Defines parameter types for commands", "testmodules": ["tests/testBasic", "tests/testTypes"], "provides": [{"indexOn": "name", "description": "Commands can accept various arguments that the user enters or that are automatically supplied by the environment. Those arguments have types that define how they are supplied or completed. The pointer points to an object with methods convert(str value) and getDefault(). Both functions have `this` set to the command's `takes` parameter. If getDefault is not defined, the default on the command's `takes` is used, if there is one. The object can have a noInput property that is set to true to reflect that this type is provided directly by the system. getDefault must be defined in that case.", "ep": "extensionpoint", "name": "type"}, {"description": "Text that the user needs to enter.", "pointer": "basic#text", "ep": "type", "name": "text"}, {"description": "A JavaScript number", "pointer": "basic#number", "ep": "type", "name": "number"}, {"description": "A true/false value", "pointer": "basic#bool", "ep": "type", "name": "boolean"}, {"description": "An object that converts via JavaScript", "pointer": "basic#object", "ep": "type", "name": "object"}, {"description": "A string that is constrained to be one of a number of pre-defined values", "pointer": "basic#selection", "ep": "type", "name": "selection"}, {"description": "A type which we don't understand from the outset, but which we hope context can help us with", "ep": "type", "name": "deferred"}], "type": "plugins/supported", "name": "types"}, "syntax_manager": {"resourceURL": "resources/syntax_manager/", "description": "Provides syntax highlighting services for the editor", "dependencies": {"rangeutils": "0.0", "delegate_support": "0.0"}, "testmodules": [], "provides": [{"register": "controllers/syntaxdirectory#discoveredNewSyntax", "ep": "extensionhandler", "name": "syntax"}, {"indexOn": "name", "ep": "extensionpoint", "name": "fileextension"}], "type": "plugins/supported", "name": "syntax_manager"}});});
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *

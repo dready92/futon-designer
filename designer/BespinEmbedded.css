@@ -284,3 +284,422 @@
 *
 * ***** END LICENSE BLOCK ***** */
 
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public License Version
+ * 1.1 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Bespin.
+ *
+ * The Initial Developer of the Original Code is
+ * Mozilla.
+ * Portions created by the Initial Developer are Copyright (C) 2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ *   Bespin Team (bespin@mozilla.com)
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ *
+ * ***** END LICENSE BLOCK ***** */
+
+body.sc-theme {
+    background: #706f63;
+}
+
+.bespin-screen {
+    font-family: 'Lucida Grande', 'Lucida Sans Unicode', Lucida, Arial,
+        Helvetica, sans-serif;
+    background: transparent;
+    padding: 0px;
+    color: rgba(218,212,186,1);
+    font-size:14px;
+    line-height: 1.8em;
+}
+
+.bespin-screen.sc-pane {
+    color: rgba(255,255,255,1);
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.4);
+    -moz-transition-property: all;
+    -moz-transition-duration: 0.5s;
+    -webkit-transition-property: all;
+    -webkit-transition-duration: 0.5s;
+}
+
+.bespin-screen.sc-pane a {
+    color: rgba(255,255,255,1);
+}
+
+.bespin-screen .sc-button-view {
+    background: transparent -moz-linear-gradient(top, rgba(62,108,185,1),
+        rgba(56,50,146,1));
+    background: transparent -webkit-gradient(linear, 50% 0%, 50% 100%, from(rgba(62, 108, 185, 1)), to(rgba(56, 50, 146, 1)));
+    font-size: 14px;
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(37,34,91,1);
+    -moz-border-radius: .25em;
+    -webkit-border-radius: .25em;
+    -moz-box-shadow:
+        inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+        inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+        rgba(0, 0, 0, 0.1) 0px 1px 2px;
+    -webkit-box-shadow:
+        inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+        inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+        rgba(0, 0, 0, 0.1) 0px 1px 2px;
+    box-shadow:
+        inset rgba(255, 255, 255, 0.2) 0 1px 0px,
+        inset rgba(0, 0, 0, 0.2) 0 -1px 0px,
+        rgba(0, 0, 0, 0.1) 0px 1px 2px;
+}
+
+.bespin-screen .sc-button-inner {
+    margin: 8px 12px;
+}
+
+.bespin-screen .bespin-color-field {
+	background: transparent url(resources/screen_theme/images/lines.png) no-repeat top right #45443c;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(69,68,60,1);
+    overflow: visible;
+    -moz-border-radius: .5em;
+    -webkit-border-radius: .5em;
+    -moz-box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 2px;
+    -webkit-box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 2px;
+}
+
+.bespin-screen .title {
+    font-family: 'DroidSans';
+    text-transform:uppercase;
+    color: rgba(218,212,186,1);
+    text-align: center;
+}
+
+.bespin-screen .arrow {
+    vertical-align: middle;
+}
+
+.bespin-screen .sc-text-field-view {
+    overflow: visible;  /* so that the glow shows through */
+}
+
+.bespin-screen .sc-text-field-view .padding {
+    display: block;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    bottom: 0px;
+    right: 0px;
+    overflow: visible;
+}
+
+.bespin-screen .sc-text-field-view input {
+    display: block;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 190px;
+    height: 14px;
+    border: 0px;
+    padding: 4px;
+    color: rgba(225,180,31,1);
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(0,0,0,0.2);
+    font-size: 8pt;
+    -moz-border-radius: 0.25em;
+    -webkit-border-radius: 0.25em;
+    box-shadow:
+        rgba(255,255,255,0.3) 0px 0px 2px,
+        inset rgba(0,0,0,0.3) 0px 0px 4px;
+    -moz-box-shadow:
+        rgba(255,255,255,0.3) 0px 0px 2px,
+        inset rgba(0,0,0,0.3) 0px 0px 4px;
+    -webkit-box-shadow:
+        rgba(255,255,255,0.3) 0px 0px 2px,
+        inset rgba(0,0,0,0.3) 0px 0px 4px;
+}
+
+.bespin-screen .sc-text-field-view input:focus,
+.bespin-screen .sc-button-view.active {
+    color: rgba(255,150,0,1);
+    border: 1px solid rgba(225,180,31,1);
+    outline: none;
+    box-shadow: rgba(255,150,0,0.6) 0px 0px 2px,
+        inset rgba(255,150,0,0.3) 0px 0px 6px;
+    -moz-box-shadow: rgba(255,150,0,0.6) 0px 0px 2px,
+        inset rgba(255,150,0,0.3) 0px 0px 6px;
+    -webkit-box-shadow: rgba(255,150,0,0.6) 0px 0px 2px,
+        inset rgba(255,150,0,0.3) 0px 0px 6px;
+}
+
+.bespin-screen textarea {
+    border: 0px;
+    padding: 4px;
+    width: 100%;
+    height: 100%;
+    color: rgba(225,180,31,1);
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(0,0,0,0.2);
+    -moz-border-radius: 0.25em;
+    -webkit-border-radius: 0.25em;
+    -moz-box-shadow:
+        rgba(255,255,255,0.3) 0px 0px 2px,
+        inset rgba(0,0,0,0.3) 0px 0px 4px;
+    -webkit-box-shadow:
+        rgba(255,255,255,0.3) 0px 0px 2px,
+        inset rgba(0,0,0,0.3) 0px 0px 4px;
+}
+
+.bespin-screen textarea:focus {
+    color: rgba(255,150,0,1);
+    border: 1px solid rgba(225,180,31,1);
+    -moz-box-shadow:
+        rgba(255,150,0,0.6) 0px 0px 2px,
+        inset rgba(255,150,0,0.3) 0px 0px 6px;
+    -webkit-box-shadow:
+        rgba(255,150,0,0.6) 0px 0px 2px,
+        inset rgba(255,150,0,0.3) 0px 0px 6px;
+}
+
+.bespin-screen .button {
+    width: 200px;
+}
+
+.bespin-screen .sc-radio-view {
+    line-height: 24px;
+}
+
+.bespin-screen .sc-radio-button input {
+    height: 1px;
+    width: 1px;
+    opacity: 0;
+}
+
+.bespin-screen .sc-radio-button {
+    position: relative;
+    margin: 0px 0px 6px 0px;
+    height: 24px;
+    font-size: 11pt;
+}
+
+.bespin-screen .sc-radio-button .button {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    background-image: url(resources/screen_theme/images/radio-unselected.png);
+    background-repeat: no-repeat;
+}
+
+.bespin-screen .sc-radio-button .sc-button-label {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 27px;
+}
+
+.bespin-screen .sc-radio-button.sel .button,
+.bespin-screen .sc-radio-button.active .button {
+    background-image: url(resources/screen_theme/images/radio-selected.png)
+}
+
+.bespin-screen .bespin-form {
+    position: absolute;
+	background: transparent url(resources/screen_theme/images/lines.png) no-repeat top right;
+	color: rgba(255,255,255,1);
+    border: solid 2px rgba(255,255,255,0.1);
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	-moz-border-top-colors: rgba(0,0,0,0.2) rgba(255,255,255,0.1);
+	-moz-border-right-colors: rgba(0,0,0,0.2) rgba(255,255,255,0.1);
+	-moz-border-left-colors: rgba(0,0,0,0.2) rgba(255,255,255,0.1);
+	-moz-border-bottom-colors: rgba(0,0,0,0.2) rgba(255,255,255,0.1);
+    -moz-transition-property: height;
+    -moz-transition-duration: 0.5s;
+    -webkit-transition-property: height;
+    -webkit-transition-duration: 0.5s;
+}
+
+.bespin-screen .sc-huge-size {
+    font-family: MuseoSans, Helvetica;
+    font-size: 29pt;
+    letter-spacing: -1.25px;
+    line-height: 1;
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.bespin-screen .bespin-informational.sc-regular-size {
+    font-family: Arial, Lucida, Helvetica, sans-serif;
+    font-size: 14px;
+    color: #dad4ba;
+    line-height: 24px;
+    text-shadow: 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.bespin-logo {
+    background-image: url(resources/screen_theme/images/bespin-s.png);
+}
+
+.bespin-screen .sc-text-field-view.cmd_input {
+    border: none;
+    background: transparent;
+}
+
+.bespin-screen .sc-text-field-view.cmd_input input {
+    border: none;
+    margin-top: 3px;
+    margin-left: 4px;
+    height: 18px;
+    padding: 0px;
+    -moz-box-shadow: none;
+}
+
+.bespin-screen .sc-button-view.cmd_prompt,
+.bespin-screen .sc-button-view.sc-pin-view {
+    border: none;
+    background: transparent;
+    -moz-box-shadow: none;
+}
+
+.bespin-screen .sc-button-view.cmd_prompt .sc-button-inner,
+.bespin-screen .sc-button-view.sc-pin-view .sc-button-inner {
+    border: none;
+    background: transparent;
+    margin: 0px;
+}
+
+.bespin-screen .sc-scroller-view.controls-hidden {
+    display: none;
+}
+
+.bespin-screen .sc-scroller-view .track,
+.bespin-screen .sc-scroller-view .thumb,
+.bespin-screen .sc-scroller-view .button-bottom,
+.bespin-screen .sc-scroller-view .button-top {
+    position: absolute;
+}
+
+.bespin-screen .sc-scroller-view:hover .track {
+    background-color: rgba(50, 50, 50, 0.8);
+    border: solid rgb(150, 150, 150) 1px;
+}
+
+.bespin-screen .sc-scroller-view .thumb,
+.bespin-screen .sc-scroller-view .button-bottom,
+.bespin-screen .sc-scroller-view .button-top {
+    border: solid rgb(150, 150, 150) 1px;
+    -moz-border-radius: 12px;
+    -webkit-border-radius: 12px;
+    opacity: 0.3;
+}
+
+.bespin-screen .sc-scroller-view:hover .thumb,
+.bespin-screen .sc-scroller-view:hover .button-bottom,
+.bespin-screen .sc-scroller-view:hover .button-top {
+    opacity: 1.0;
+}
+
+.bespin-screen .sc-scroller-view .thumb {
+    background-color: black;
+    -moz-border-radius: 12px;
+    -webkit-border-radius: 12px;
+}
+
+.bespin-screen .sc-scroller-view .button-bottom,
+.bespin-screen .sc-scroller-view .button-top {
+    background-color: rgb(100, 100, 100);
+    opacity: 0.3;
+}
+
+.bespin-screen .sc-scroller-view.sc-vertical .track {
+    left: 0px;
+    right: 0px;
+    top: 15px;
+    bottom: 15px;
+}
+
+.bespin-screen .sc-scroller-view.sc-horizontal .track {
+    left: 15px;
+    right: 15px;
+    top: 0px;
+    bottom: 0px;
+}
+
+.bespin-screen .sc-scroller-view.sc-vertical .thumb {
+    left: 0px;
+    right: 0px;
+}
+
+.bespin-screen .sc-scroller-view.sc-horizontal .thumb {
+    top: 0px;
+    bottom: 0px;
+}
+
+.bespin-screen .sc-scroller-view.sc-vertical .button-bottom,
+.bespin-screen .sc-scroller-view.sc-vertical .button-top {
+    left: 1px;
+    right: 1px;
+    height: 13px;
+}
+
+.bespin-screen .sc-scroller-view.sc-horizontal .button-bottom,
+.bespin-screen .sc-scroller-view.sc-horizontal .button-top {
+    top: 1px;
+    bottom: 1px;
+    width: 13px;
+}
+
+.bespin-screen .sc-scroller-view.sc-vertical .button-bottom {
+    bottom: 7px;
+    background: url(resources/screen_theme/images/scroll-down.png) no-repeat center center
+        rgb(100, 100, 100);
+}
+
+.bespin-screen .sc-scroller-view.sc-horizontal .button-bottom {
+    right: 7px;
+    background: url(resources/screen_theme/images/scroll-right.png) no-repeat center center
+        rgb(100, 100, 100);
+}
+
+.bespin-screen .sc-scroller-view.sc-vertical .button-top {
+    top: 7px;
+    background: url(resources/screen_theme/images/scroll-up.png) no-repeat center center
+        rgb(100, 100, 100);
+}
+
+.bespin-screen .sc-scroller-view.sc-horizontal .button-top {
+    left: 7px;
+    background: url(resources/screen_theme/images/scroll-left.png) no-repeat center center
+        rgb(100, 100, 100);
+}
+
+.bespin-screen .disabled {
+    opacity: 0.3;
+}
+
+.sc-view .text_editor {
+    cursor: text;
+}

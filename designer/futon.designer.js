@@ -36,16 +36,18 @@
 		var bespin = embed.useBespin(element.get(0),{
 			stealFocus: true,
 			syntax: "js",
-			initialContent: initialContent,
 			settings: {
 				"fontsize": 11
 			}
 		});
+		bespin.value = initialContent;
 		var currentStatus = "";
 		var changeStatus = function(event) {
 			settings[event].call(self,statusBarElement);
 			currentStatus = event;
 		}
+
+// 		element.makeResizable({"onEndOfResize": function() { bespin.dimensionsChanged(); } });
 
 		changeStatus("idle");
 
@@ -109,6 +111,9 @@
 				return false;
 			return true;
 		}
+
+		this.dimensionsChanged = function () { bespin.dimensionsChanged();}
+
 	};
 
 
@@ -427,7 +432,7 @@
 			var content = currentDdoc.views[entityname].map;
 			bh = new bespinHandler ( 
 				$("#designer div.editor") , 
-				$("#designer div.editorStatusBar") , 
+				$("#designer div.editorStatusBar > div").eq(0) , 
 				content, {}
 			);
 
@@ -441,13 +446,30 @@
 
 			$("#designer div.editorWrapper").removeClass("noview").addClass("view");
 
-			$("#designer div.editorSwitcherBar").html("<strong>Map</strong>").show().click(function() {
+			$("#designer div.editorWrapper").makeResizable(
+			{
+				"grippie": $("#designer div.editorWrapper div.grippie"),
+				"onEndOfResize": function() { 
+					$(">div",this).width($(this).width());
+					var editorh = $(this).height();
+					editorh -= $(">div.editorSwitcherBar",this).height();
+					editorh -= $(">div.editorStatusBar",this).height();
+					$(">div.editor",this).height(editorh);
+					bh.dimensionsChanged();
+				},
+				"horizontal": true, 
+				"vertical": true 
+			});
+
+			
+			$("#designer div.editorSwitcherBar > div").html("<strong>Map</strong>");
+			$("#designer div.editorSwitcherBar").show().click(function() {
 				if ( current == "map" ) {
 					current = "reduce";
-					$(this).html("<strong>Reduce</strong>");
+					$(">div",this).html("<strong>Reduce</strong>");
 				} else {
 					current = "map";
-					$(this).html("<strong>Map</strong>");
+					$(">div",this).html("<strong>Map</strong>");
 				}
 				var tmp_text = bh.getValue();
 				var tmp_template = bh.getInitialContent();
@@ -456,7 +478,7 @@
 				buffer_template = tmp_template;
 			});
 
-			$("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
+			$("#designer div.editorStatusBar > div").delegate("span.addTemplate","click", function () {
 				codeTemplateListener(current);
 			})
 			.delegate("span.saveCode","click",
@@ -519,9 +541,9 @@
 			var content = currentDdoc.lists[entityname];
 			bh = new bespinHandler ( 
 				$("#designer div.editor") , 
-				$("#designer div.editorStatusBar") , content, {}
+				$("#designer div.editorStatusBar > div") , content, {}
 			);
-			$("#designer div.editorStatusBar").delegate("span.addTemplate","click", function () {
+			$("#designer div.editorStatusBar > div").delegate("span.addTemplate","click", function () {
 				codeTemplateListener("list");
 			})
 			.delegate("span.saveCode","click",
@@ -540,6 +562,20 @@
 					});
 				}
 			);
+
+			$("#designer div.editorWrapper").makeResizable(
+			{
+				"grippie": $("#designer div.editorWrapper div.grippie"),
+				"onEndOfResize": function() { 
+					$(">div",this).width($(this).width());
+					var editorh = $(this).height();
+					editorh -= $(">div.editorStatusBar",this).height();
+					$(">div.editor",this).height(editorh);
+					bh.dimensionsChanged();
+				},
+				"horizontal": true, 
+				"vertical": true 
+			});
 
 			$("#designer table input[name=key]")
 			.add("#designer table input[name=keys]")
@@ -618,10 +654,10 @@
 			var content = currentDdoc.shows[entityname];
 			bh = new bespinHandler ( 
 				$("#designer div.editor") , 
-				$("#designer div.editorStatusBar") , 
+				$("#designer div.editorStatusBar > div") , 
 				content, {}
 			);
-			$("#designer div.editorStatusBar")
+			$("#designer div.editorStatusBar > div")
 			.delegate("span.addTemplate","click", function () { codeTemplateListener("show"); })
             .delegate("span.saveCode","click", function () {
 				bh.setStatusSaving();
@@ -637,6 +673,22 @@
 					}
 				});
 			});
+
+			$("#designer div.editorWrapper").makeResizable(
+			{
+				"grippie": $("#designer div.editorWrapper div.grippie"),
+				"onEndOfResize": function() { 
+					$(">div",this).width($(this).width());
+					var editorh = $(this).height();
+					editorh -= $(">div.editorStatusBar",this).height();
+					$(">div.editor",this).height(editorh);
+					bh.dimensionsChanged();
+				},
+				"horizontal": true, 
+				"vertical": true 
+			});
+
+
 			$("#designer .viewSettingsHeader .open").hide();
 			$("#designer .viewSettingsHeader .close").hide();
 
